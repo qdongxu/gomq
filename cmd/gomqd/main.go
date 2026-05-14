@@ -1,6 +1,6 @@
 // gomqd is the gomq server entry point.
-// It loads configuration, starts the server, and handles graceful
-// shutdown on SIGINT or SIGTERM.
+// It loads configuration, validates it, starts the server, and handles
+// graceful shutdown on SIGINT or SIGTERM.
 package main
 
 import (
@@ -21,20 +21,23 @@ type Server struct {
 	cfg *config.Config
 }
 
-// NewServer creates a Server from the given config path.
+// NewServer loads and validates configuration, then creates a Server.
 func NewServer(configPath string) (*Server, error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+	if err := config.Validate(cfg); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 	return &Server{cfg: cfg}, nil
 }
 
-// Run starts the server and blocks until a shutdown signal
-// is received.
+// Run starts the server and blocks until a shutdown signal is received.
 func (s *Server) Run() error {
 	fmt.Printf("gomqd v%s started\n", version)
-	fmt.Printf("config path: %s\n", s.cfg.ConfigPath)
+	fmt.Printf("listeners: %v\n", s.cfg.Network.Listeners)
+	fmt.Printf("heartbeat: %d s\n", s.cfg.Network.Heartbeat)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -54,7 +57,7 @@ func main() {
 
 	srv, err := NewServer(*configPath)
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		log.Fatalf("failed to start: %v", err)
 	}
 
 	if err := srv.Run(); err != nil {

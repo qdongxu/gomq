@@ -4,6 +4,12 @@
 目标是用 Go 完整实现 RabbitMQ 服务端功能，
 使用嵌入式 etcd 持久化，htmx 构建 Web 管理端。
 
+## 配置
+
+gomq 使用 TOML 配置文件。参见 `configs/gomq.default.toml` 了解所有
+可用选项。环境变量可通过 `GOMQ_` 前缀覆盖文件值
+（例如 `GOMQ_NETWORK_HEARTBEAT=30`）。
+
 ## 快速开始
 
 ```bash
