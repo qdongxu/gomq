@@ -36,6 +36,23 @@ make test
 
 ## Status
 
+| Feature | Status |
+|---------|--------|
+| AMQP 0-9-1 wire protocol | ✅ |
+| Connection handshake & heartbeat | ✅ |
+| Channel multiplexing | ✅ |
+| Exchange declare / delete (direct, fanout) | ✅ |
+| Queue declare / delete / bind / unbind | ✅ |
+| Basic.Publish / Basic.Get / Basic.Consume | ✅ |
+| Basic.Ack / Basic.Nack / Basic.Reject | ✅ |
+| Basic.Qos (per-channel & global prefetch) | ✅ |
+| Connection.Close / Channel.Close | ✅ |
+| Message in-memory store | ✅ |
+| Routing & delivery | ✅ |
+| etcd persistence | WIP |
+| Web management UI (htmx) | WIP |
+| Clustering | WIP |
+
 WIP — documentation and features will be updated as code evolves.
 
 ## License
