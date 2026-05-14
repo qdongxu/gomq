@@ -6,6 +6,58 @@ import (
 	"github.com/qdongxu/gomq/pkg/protocol/amqp091"
 )
 
+// encodeQueueDeclare builds a Queue.Declare method payload.
+func encodeQueueDeclare(
+	queue string,
+	passive, durable, exclusive, autoDelete, noWait bool,
+	args map[string]interface{},
+) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(0) // reserved-1
+	_ = enc.WriteShortString(queue)
+	var bits uint8
+	if passive {
+		bits |= 0x01
+	}
+	if durable {
+		bits |= 0x02
+	}
+	if exclusive {
+		bits |= 0x04
+	}
+	if autoDelete {
+		bits |= 0x08
+	}
+	if noWait {
+		bits |= 0x10
+	}
+	_ = enc.WriteUint8(bits)
+	_ = enc.WriteTable(args)
+	return enc.Bytes()
+}
+
+// encodeQueueDelete builds a Queue.Delete method payload.
+func encodeQueueDelete(
+	queue string,
+	ifUnused, ifEmpty, noWait bool,
+) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(0) // reserved-1
+	_ = enc.WriteShortString(queue)
+	var bits uint8
+	if ifUnused {
+		bits |= 0x01
+	}
+	if ifEmpty {
+		bits |= 0x02
+	}
+	if noWait {
+		bits |= 0x04
+	}
+	_ = enc.WriteUint8(bits)
+	return enc.Bytes()
+}
+
 // encodePublish builds a Basic.Publish method payload.
 func encodePublish(
 	exchange, routingKey string,
@@ -108,6 +160,70 @@ func encodeCancel(tag string, noWait bool) []byte {
 	}
 	_ = enc.WriteUint8(bits)
 	return enc.Bytes()
+}
+
+// TestQueueDeclareProtocol creates a queue via method frame.
+func TestQueueDeclareProtocol(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	payload := encodeQueueDeclare("q2", false, false, false, false, false, nil)
+	handler, _ := reg.Lookup(50, 10)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("declare: %v", err)
+	}
+	if srv.QueueManager().Count() != 1 {
+		t.Fatalf("queues = %d, want 1", srv.QueueManager().Count())
+	}
+}
+
+// TestQueueDeclarePassiveProtocol looks up an existing queue.
+func TestQueueDeclarePassiveProtocol(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	_, _ = srv.QueueManager().Declare("q3", false, false, false, nil, nil)
+
+	payload := encodeQueueDeclare("q3", true, false, false, false, false, nil)
+	handler, _ := reg.Lookup(50, 10)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("declare: %v", err)
+	}
+}
+
+// TestQueueDeleteProtocol removes a queue via method frame.
+func TestQueueDeleteProtocol(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	_, _ = srv.QueueManager().Declare("q4", false, false, false, nil, nil)
+
+	payload := encodeQueueDelete("q4", false, false, false)
+	handler, _ := reg.Lookup(50, 40)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if srv.QueueManager().Count() != 0 {
+		t.Fatalf("queues = %d, want 0", srv.QueueManager().Count())
+	}
 }
 
 // TestBasicPublish routes a message via method frame.

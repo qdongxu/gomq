@@ -19,6 +19,8 @@ func RegisterBasicHandlers(
 	reg.Register(60, 80, handleAck(srv))
 	reg.Register(60, 90, handleReject(srv))
 	reg.Register(60, 120, handleNack(srv))
+	reg.Register(50, 10, handleQueueDeclare(srv))
+	reg.Register(50, 40, handleQueueDelete(srv))
 }
 
 // handleConsume decodes Basic.Consume and subscribes a consumer.
@@ -247,6 +249,102 @@ func handleReject(srv *Server) MethodHandler {
 		requeue := bits&0x01 != 0
 
 		_ = srv.DeliveryTracker().Reject(tag, ch.ID(), requeue)
+		return nil
+	}
+}
+
+// handleQueueDeclare decodes Queue.Declare and creates/looks up a queue.
+func handleQueueDeclare(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		queue, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		passive := bits&0x01 != 0
+		durable := bits&0x02 != 0
+		exclusive := bits&0x04 != 0
+		autoDelete := bits&0x08 != 0
+		noWait := bits&0x10 != 0
+
+		args, err := dec.ReadTable()
+		if err != nil {
+			return err
+		}
+
+		var q *Queue
+		if passive {
+			var ok bool
+			q, ok = srv.QueueManager().Get(queue)
+			if !ok {
+				return nil
+			}
+		} else {
+			q, _ = srv.QueueManager().Declare(
+				queue, durable, exclusive, autoDelete, args, nil,
+			)
+		}
+
+		if !noWait && q != nil {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(50) // class
+			_ = enc.WriteUint16(11) // DeclareOk
+			_ = enc.WriteShortString(q.Name)
+			_ = enc.WriteUint32(0)  // message-count
+			_ = enc.WriteUint32(0)  // consumer-count
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
+		return nil
+	}
+}
+
+// handleQueueDelete decodes Queue.Delete and removes a queue.
+func handleQueueDelete(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		queue, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		_ = bits&0x01 != 0 // if-unused not enforced
+		_ = bits&0x02 != 0 // if-empty not enforced
+		noWait := bits&0x04 != 0
+
+		srv.QueueManager().Delete(queue)
+
+		if !noWait {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(50) // class
+			_ = enc.WriteUint16(41) // DeleteOk
+			_ = enc.WriteUint32(0)  // message-count
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
 		return nil
 	}
 }
