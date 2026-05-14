@@ -25,16 +25,18 @@ const (
 
 // Connection wraps a net.Conn and manages the AMQP frame lifecycle.
 type Connection struct {
-	raw      net.Conn
-	reader   *bufio.Reader
-	writer   *bufio.Writer
-	state    ConnState
-	mu       sync.RWMutex
-	auth     Authenticator
-	channels map[uint16]*Channel // placeholder for Issue #8
-	hb       *HeartbeatMonitor
-	server   *Server
-	heartbeat int // negotiated heartbeat interval
+	raw        net.Conn
+	reader     *bufio.Reader
+	writer     *bufio.Writer
+	state      ConnState
+	mu         sync.RWMutex
+	auth       Authenticator
+	channelMgr *ChannelManager
+	dispatcher *Dispatcher
+	hb         *HeartbeatMonitor
+	server     *Server
+	heartbeat  int // negotiated heartbeat interval
+	registry   *SimpleRegistry
 }
 
 // NewConnection creates a Connection from an accepted net.Conn.
@@ -43,15 +45,20 @@ func NewConnection(
 	auth Authenticator,
 	srv *Server,
 ) *Connection {
-	return &Connection{
+	reg := NewSimpleRegistry()
+	c := &Connection{
 		raw:      raw,
 		reader:   bufio.NewReader(raw),
 		writer:   bufio.NewWriter(raw),
 		state:    StateInit,
 		auth:     auth,
-		channels: make(map[uint16]*Channel),
 		server:   srv,
+		registry: reg,
 	}
+	c.channelMgr = NewChannelManager(2048)
+	c.dispatcher = NewDispatcher(reg)
+	c.registerConnectionMethods()
+	return c
 }
 
 // Serve runs the connection lifecycle: handshake then frame loop.
@@ -87,8 +94,9 @@ func (c *Connection) Serve() {
 			continue
 		}
 
-		// TODO: dispatch to channel handler (Issue #8)
-		_ = f
+		if err := c.handleChannelFrame(f); err != nil {
+			return
+		}
 	}
 }
 
@@ -104,6 +112,9 @@ func (c *Connection) Close() error {
 
 	if c.hb != nil {
 		c.hb.Stop()
+	}
+	if c.channelMgr != nil {
+		c.channelMgr.CloseAll()
 	}
 
 	// Send Connection.Close if we are in Open state.
@@ -192,8 +203,23 @@ func (c *Connection) handleConnectionFrame(
 	return nil
 }
 
-// Channel is a placeholder for the channel abstraction (Issue #8).
-type Channel struct{}
+// handleChannelFrame dispatches a non-zero channel frame.
+func (c *Connection) handleChannelFrame(
+	f *amqp091.Frame,
+) error {
+	ch, ok := c.channelMgr.Get(f.Channel)
+	if !ok {
+		// Channel not open; ignore or send Channel.Close.
+		return nil
+	}
+	return c.dispatcher.Dispatch(ch, f)
+}
+
+// registerConnectionMethods registers handlers for Connection class.
+func (c *Connection) registerConnectionMethods() {
+	// Connection.Close is handled inline in handleConnectionFrame.
+	// No other Connection methods dispatched through channels.
+}
 
 // Server is a placeholder for the top-level server (filled in later).
 type Server struct{}
