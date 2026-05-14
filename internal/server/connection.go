@@ -221,5 +221,4 @@ func (c *Connection) registerConnectionMethods() {
 	// No other Connection methods dispatched through channels.
 }
 
-// Server is a placeholder for the top-level server (filled in later).
-type Server struct{}
+
