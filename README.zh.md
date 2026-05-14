@@ -50,6 +50,7 @@ make test
 | Connection.Close / Channel.Close | ✅ |
 | Channel.Flow（客户端到服务端） | ✅ |
 | Basic.Return（强制投递） | ✅ |
+| 发布者确认（Confirm.Select + Basic.Ack/Nack） | ✅ |
 | 消息内存存储 | ✅ |
 | 路由与投递 | ✅ |
 | etcd 持久化 | 开发中 |

@@ -20,13 +20,15 @@ const (
 
 // Channel is a lightweight sub-connection for AMQP command multiplexing.
 type Channel struct {
-	id        uint16
-	conn      *Connection
-	state     ChanState
-	mu        sync.RWMutex
-	flowOn    bool
-	prefetch  *Prefetch
-	flowCtrl  *FlowController
+	id           uint16
+	conn         *Connection
+	state        ChanState
+	mu           sync.RWMutex
+	flowOn       bool
+	prefetch     *Prefetch
+	flowCtrl     *FlowController
+	confirmMode  bool
+	deliveryTag  uint64
 }
 
 // NewChannel creates a channel with the given ID on a connection.
@@ -115,4 +117,27 @@ func (ch *Channel) SetFlowController(fc *FlowController) {
 	ch.mu.Lock()
 	ch.flowCtrl = fc
 	ch.mu.Unlock()
+}
+
+// SetConfirmMode enables publisher confirm mode on the channel.
+func (ch *Channel) SetConfirmMode() {
+	ch.mu.Lock()
+	ch.confirmMode = true
+	ch.mu.Unlock()
+}
+
+// IsConfirmMode reports whether the channel is in confirm mode.
+func (ch *Channel) IsConfirmMode() bool {
+	ch.mu.RLock()
+	defer ch.mu.RUnlock()
+	return ch.confirmMode
+}
+
+// NextDeliveryTag returns the next delivery tag and increments
+// the internal counter. Safe for concurrent use.
+func (ch *Channel) NextDeliveryTag() uint64 {
+	ch.mu.Lock()
+	defer ch.mu.Unlock()
+	ch.deliveryTag++
+	return ch.deliveryTag
 }
