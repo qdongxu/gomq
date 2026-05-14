@@ -48,6 +48,7 @@ make test
 | Basic.Qos (per-channel & global prefetch) | ✅ |
 | Basic.Recover | ✅ |
 | Connection.Close / Channel.Close | ✅ |
+| Channel.Flow (client-to-server) | ✅ |
 | Message in-memory store | ✅ |
 | Routing & delivery | ✅ |
 | etcd persistence | WIP |

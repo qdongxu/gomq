@@ -13,6 +13,7 @@ func RegisterBasicHandlers(
 	srv *Server,
 ) {
 	reg.Register(10, 50, handleConnectionClose(srv))
+	reg.Register(20, 20, handleChannelFlow(srv))
 	reg.Register(20, 40, handleChannelClose(srv))
 	reg.Register(60, 10, handleQos(srv))
 	reg.Register(60, 20, handleConsume(srv))
@@ -650,6 +651,42 @@ func handleConnectionClose(srv *Server) MethodHandler {
 
 		// Close the underlying connection
 		_ = ch.Conn().Close()
+		return nil
+	}
+}
+
+// handleChannelFlow decodes Channel.Flow and toggles channel flow state.
+func handleChannelFlow(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		active := bits&0x01 != 0
+
+		if active {
+			ch.SetFlow(true)
+			srv.FlowController().ResumeChannel(ch.ID())
+		} else {
+			ch.SetFlow(false)
+			srv.FlowController().PauseChannel(ch.ID())
+		}
+
+		enc := amqp091.NewEncoder()
+		_ = enc.WriteUint16(20) // class
+		_ = enc.WriteUint16(21) // FlowOk
+		var replyBits uint8
+		if active {
+			replyBits |= 0x01
+		}
+		_ = enc.WriteUint8(replyBits)
+		_ = ch.SendFrame(
+			&amqp091.Frame{
+				Type:    amqp091.FrameMethod,
+				Payload: enc.Bytes(),
+			})
 		return nil
 	}
 }

@@ -48,6 +48,7 @@ make test
 | Basic.Qos（单信道与全局预取） | ✅ |
 | Basic.Recover | ✅ |
 | Connection.Close / Channel.Close | ✅ |
+| Channel.Flow（客户端到服务端） | ✅ |
 | 消息内存存储 | ✅ |
 | 路由与投递 | ✅ |
 | etcd 持久化 | 开发中 |
