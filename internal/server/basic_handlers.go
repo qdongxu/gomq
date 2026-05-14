@@ -22,6 +22,7 @@ func RegisterBasicHandlers(
 	reg.Register(60, 80, handleAck(srv))
 	reg.Register(60, 90, handleReject(srv))
 	reg.Register(60, 110, handleRecover(srv))
+	reg.Register(60, 120, handleNack(srv))
 	reg.Register(50, 10, handleQueueDeclare(srv))
 	reg.Register(50, 20, handleQueueBind(srv))
 	reg.Register(50, 40, handleQueueDelete(srv))
