@@ -21,6 +21,8 @@ func RegisterBasicHandlers(
 	reg.Register(60, 120, handleNack(srv))
 	reg.Register(50, 10, handleQueueDeclare(srv))
 	reg.Register(50, 40, handleQueueDelete(srv))
+	reg.Register(40, 10, handleExchangeDeclare(srv))
+	reg.Register(40, 20, handleExchangeDelete(srv))
 }
 
 // handleConsume decodes Basic.Consume and subscribes a consumer.
@@ -339,6 +341,113 @@ func handleQueueDelete(srv *Server) MethodHandler {
 			_ = enc.WriteUint16(50) // class
 			_ = enc.WriteUint16(41) // DeleteOk
 			_ = enc.WriteUint32(0)  // message-count
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
+		return nil
+	}
+}
+
+// handleExchangeDeclare decodes Exchange.Declare and
+// creates/looks up an exchange.
+func handleExchangeDeclare(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		exchange, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		exType, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		passive := bits&0x01 != 0
+		_ = bits&0x02 != 0 // durable not enforced
+		_ = bits&0x04 != 0 // auto-delete not enforced
+		_ = bits&0x08 != 0 // internal not enforced
+		noWait := bits&0x10 != 0
+
+		args, err := dec.ReadTable()
+		if err != nil {
+			return err
+		}
+
+		var et ExchangeType
+		switch exType {
+		case "direct":
+			et = ExchangeDirect
+		case "fanout":
+			et = ExchangeFanout
+		default:
+			et = ExchangeDirect
+		}
+
+		var ex *Exchange
+		if passive {
+			var ok bool
+			ex, ok = srv.ExchangeManager().Get(exchange)
+			if !ok {
+				return nil
+			}
+		} else {
+			ex, _ = srv.ExchangeManager().Declare(
+				exchange, et, false, false, false, args,
+			)
+		}
+
+		if !noWait && ex != nil {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(40) // class
+			_ = enc.WriteUint16(11) // DeclareOk
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
+		return nil
+	}
+}
+
+// handleExchangeDelete decodes Exchange.Delete and removes an exchange.
+func handleExchangeDelete(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		exchange, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		_ = bits&0x01 != 0 // if-unused not enforced
+		noWait := bits&0x02 != 0
+
+		srv.ExchangeManager().Delete(exchange)
+
+		if !noWait {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(40) // class
+			_ = enc.WriteUint16(21) // DeleteOk
 			_ = ch.SendFrame(
 				&amqp091.Frame{
 					Type:    amqp091.FrameMethod,
