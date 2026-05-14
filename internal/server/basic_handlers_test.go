@@ -770,6 +770,65 @@ func TestBasicRecoverNoRequeue(t *testing.T) {
 	}
 }
 
+// encodeChannelFlow builds a Channel.Flow method payload.
+func encodeChannelFlow(active bool) []byte {
+	enc := amqp091.NewEncoder()
+	var bits uint8
+	if active {
+		bits |= 0x01
+	}
+	_ = enc.WriteUint8(bits)
+	return enc.Bytes()
+}
+
+// TestChannelFlowPause pauses a channel via protocol frame.
+func TestChannelFlowPause(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+	ch.SetFlowController(srv.FlowController())
+
+	payload := encodeChannelFlow(false)
+	handler, _ := reg.Lookup(20, 20)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("flow pause: %v", err)
+	}
+	if ch.FlowActive() {
+		t.Fatal("channel should be paused")
+	}
+}
+
+// TestChannelFlowResume resumes a paused channel via protocol frame.
+func TestChannelFlowResume(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+	ch.SetFlowController(srv.FlowController())
+
+	// pause first
+	srv.FlowController().PauseChannel(1)
+	ch.SetFlow(false)
+
+	payload := encodeChannelFlow(true)
+	handler, _ := reg.Lookup(20, 20)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("flow resume: %v", err)
+	}
+	if !ch.FlowActive() {
+		t.Fatal("channel should be active")
+	}
+}
+
 // encodeQueueBind builds a Queue.Bind method payload.
 func encodeQueueBind(
 	queue, exchange, routingKey string,
