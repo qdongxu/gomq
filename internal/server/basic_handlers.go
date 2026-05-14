@@ -30,6 +30,7 @@ func RegisterBasicHandlers(
 	reg.Register(50, 50, handleQueueUnbind(srv))
 	reg.Register(40, 10, handleExchangeDeclare(srv))
 	reg.Register(40, 20, handleExchangeDelete(srv))
+	reg.Register(85, 10, handleConfirmSelect(srv))
 }
 
 // handleQos decodes Basic.Qos and updates the channel prefetch limit.
@@ -183,21 +184,84 @@ func handlePublish(srv *Server) MethodHandler {
 
 		msg := NewMessage(nil, Properties{})
 		msg.SetRoutingMeta(exchange, routingKey)
-		routed, err := srv.Publisher().Publish(
-			exchange, routingKey, msg, ch.ID(),
-		)
-		if err != nil {
-			return err
+
+		var routed int
+		if ch.IsConfirmMode() {
+			tag := ch.NextDeliveryTag()
+			routed, err = srv.Publisher().Publish(
+				exchange, routingKey, msg, ch.ID(),
+			)
+			if err != nil {
+				return err
+			}
+			sendPublisherConfirm(ch, tag, routed > 0)
+		} else {
+			routed, err = srv.Publisher().Publish(
+				exchange, routingKey, msg, ch.ID(),
+			)
+			if err != nil {
+				return err
+			}
 		}
 
 		if mandatory && routed == 0 {
 			enc := amqp091.NewEncoder()
-			_ = enc.WriteUint16(60) // class
-			_ = enc.WriteUint16(50) // Return
+			_ = enc.WriteUint16(60)  // class
+			_ = enc.WriteUint16(50)  // Return
 			_ = enc.WriteUint16(312) // reply-code NO_ROUTE
 			_ = enc.WriteShortString("NO_ROUTE")
 			_ = enc.WriteShortString(exchange)
 			_ = enc.WriteShortString(routingKey)
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
+		return nil
+	}
+}
+
+// sendPublisherConfirm sends Basic.Ack or Basic.Nack to the
+// publisher on the given channel based on whether the message
+// was routed to any queue.
+func sendPublisherConfirm(ch *Channel, tag uint64, ack bool) {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(60) // class Basic
+	if ack {
+		_ = enc.WriteUint16(80) // Ack
+		_ = enc.WriteUint64(tag)
+		_ = enc.WriteUint8(0) // multiple=false
+	} else {
+		_ = enc.WriteUint16(120) // Nack
+		_ = enc.WriteUint64(tag)
+		_ = enc.WriteUint8(0) // multiple=false, requeue=false
+	}
+	_ = ch.SendFrame(
+		&amqp091.Frame{
+			Type:    amqp091.FrameMethod,
+			Payload: enc.Bytes(),
+		})
+}
+
+// handleConfirmSelect decodes Confirm.Select and enables publisher
+// confirm mode on the channel.
+func handleConfirmSelect(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		noWait := bits&0x01 != 0
+
+		ch.SetConfirmMode()
+
+		if !noWait {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(85)   // class Confirm
+			_ = enc.WriteUint16(11)   // SelectOk
 			_ = ch.SendFrame(
 				&amqp091.Frame{
 					Type:    amqp091.FrameMethod,
