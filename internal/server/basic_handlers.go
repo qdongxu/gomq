@@ -178,14 +178,33 @@ func handlePublish(srv *Server) MethodHandler {
 		if err != nil {
 			return err
 		}
-		_ = bits&0x01 != 0 // mandatory
+		mandatory := bits&0x01 != 0
 		_ = bits&0x02 != 0 // immediate
 
 		msg := NewMessage(nil, Properties{})
 		msg.SetRoutingMeta(exchange, routingKey)
-		return srv.Publisher().Publish(
+		routed, err := srv.Publisher().Publish(
 			exchange, routingKey, msg, ch.ID(),
 		)
+		if err != nil {
+			return err
+		}
+
+		if mandatory && routed == 0 {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(60) // class
+			_ = enc.WriteUint16(50) // Return
+			_ = enc.WriteUint16(312) // reply-code NO_ROUTE
+			_ = enc.WriteShortString("NO_ROUTE")
+			_ = enc.WriteShortString(exchange)
+			_ = enc.WriteShortString(routingKey)
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
+		return nil
 	}
 }
 

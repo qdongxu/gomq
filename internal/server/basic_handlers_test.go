@@ -403,6 +403,39 @@ func TestBasicPublishNoRoute(t *testing.T) {
 	}
 }
 
+// TestBasicPublishMandatoryNoRoute returns unroutable messages.
+func TestBasicPublishMandatoryNoRoute(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	_, _ = srv.ExchangeManager().Declare(
+		"amq.direct", ExchangeDirect,
+		false, false, false, nil,
+	)
+	_, _ = srv.QueueManager().Declare("q1", false, false, false, nil, nil)
+	_, _ = srv.BindingManager().Bind("amq.direct", "q1", "news", nil)
+
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(0) // reserved-1
+	_ = enc.WriteShortString("amq.direct")
+	_ = enc.WriteShortString("missing")
+	_ = enc.WriteUint8(0x01) // mandatory=true
+
+	handler, _ := reg.Lookup(60, 40)
+	if err := handler(ch, enc.Bytes()); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	if srv.MessageStore().Len("q1") != 0 {
+		t.Fatalf("queue len = %d, want 0", srv.MessageStore().Len("q1"))
+	}
+}
+
 // TestBasicGetEmpty returns empty when queue has no messages.
 func TestBasicGetEmpty(t *testing.T) {
 	srv := NewServer()

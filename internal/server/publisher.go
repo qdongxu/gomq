@@ -36,14 +36,15 @@ func NewPublisher(
 }
 
 // Publish routes a message to bound queues and delivers to consumers.
+// Returns the number of queues the message was routed to.
 func (p *Publisher) Publish(
 	exchangeName, routingKey string,
 	msg *Message,
 	channelID uint16,
-) error {
+) (int, error) {
 	ex, ok := p.exchanges.Get(exchangeName)
 	if !ok {
-		return fmt.Errorf("exchange %q not found", exchangeName)
+		return 0, fmt.Errorf("exchange %q not found", exchangeName)
 	}
 
 	bindings := p.bindings.GetBindings(exchangeName)
@@ -53,5 +54,5 @@ func (p *Publisher) Publish(
 		p.store.Enqueue(qn, msg)
 		_ = p.deliverer.Deliver(msg, qn, channelID)
 	}
-	return nil
+	return len(queues), nil
 }

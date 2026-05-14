@@ -49,6 +49,7 @@ make test
 | Basic.Recover | ✅ |
 | Connection.Close / Channel.Close | ✅ |
 | Channel.Flow (client-to-server) | ✅ |
+| Basic.Return (mandatory publish) | ✅ |
 | Message in-memory store | ✅ |
 | Routing & delivery | ✅ |
 | etcd persistence | WIP |

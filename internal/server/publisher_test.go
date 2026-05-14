@@ -26,7 +26,8 @@ func TestPublishDirect(t *testing.T) {
 
 	msg := NewMessage([]byte("hello"), Properties{})
 	msg.SetRoutingMeta("amq.direct", "news")
-	if err := p.Publish("amq.direct", "news", msg, 1); err != nil {
+	_, err := p.Publish("amq.direct", "news", msg, 1)
+	if err != nil {
 		t.Fatalf("publish: %v", err)
 	}
 	if p.store.Len("q1") != 1 {
@@ -47,7 +48,8 @@ func TestPublishFanout(t *testing.T) {
 	_, _ = p.bindings.Bind("amq.fanout", "q2", "", nil)
 
 	msg := NewMessage([]byte("broadcast"), Properties{})
-	if err := p.Publish("amq.fanout", "", msg, 1); err != nil {
+	_, err := p.Publish("amq.fanout", "", msg, 1)
+	if err != nil {
 		t.Fatalf("publish: %v", err)
 	}
 	if p.store.Len("q1") != 1 || p.store.Len("q2") != 1 {
@@ -66,7 +68,8 @@ func TestPublishNoRoute(t *testing.T) {
 	_, _ = p.queues.Declare("q1", false, false, false, nil, nil)
 
 	msg := NewMessage([]byte("orphan"), Properties{})
-	if err := p.Publish("amq.direct", "missing", msg, 1); err != nil {
+	_, err := p.Publish("amq.direct", "missing", msg, 1)
+	if err != nil {
 		t.Fatalf("publish: %v", err)
 	}
 	if p.store.Len("q1") != 0 {
@@ -92,7 +95,8 @@ func TestPublishEndToEnd(t *testing.T) {
 	_, _ = p.consumers.Subscribe("c1", "q1", ch, false, false, nil)
 
 	msg := NewMessage([]byte("e2e"), Properties{})
-	if err := p.Publish("amq.direct", "news", msg, 1); err != nil {
+	_, err := p.Publish("amq.direct", "news", msg, 1)
+	if err != nil {
 		t.Fatalf("publish: %v", err)
 	}
 	if p.store.Len("q1") != 1 {
