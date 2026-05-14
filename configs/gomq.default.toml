@@ -1,0 +1,25 @@
+# gomq default configuration
+# Copy this file and modify as needed.
+
+[network]
+listeners = ["0.0.0.0:5672"]
+heartbeat = 60
+frame_max = 131072
+channel_max = 2048
+
+[log]
+level = "info"
+output = "stdout"
+
+[cluster]
+node_id = "node-1"
+discovery = "static"
+nodes = []
+
+[web]
+enabled = true
+listen = "0.0.0.0:15672"
+path_prefix = "/"
+
+[auth]
+# Placeholder for authentication settings.
