@@ -6,6 +6,56 @@ import (
 	"github.com/qdongxu/gomq/pkg/protocol/amqp091"
 )
 
+// encodeExchangeDeclare builds an Exchange.Declare method payload.
+func encodeExchangeDeclare(
+	exchange, exType string,
+	passive, durable, autoDelete, internal, noWait bool,
+	args map[string]interface{},
+) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(0) // reserved-1
+	_ = enc.WriteShortString(exchange)
+	_ = enc.WriteShortString(exType)
+	var bits uint8
+	if passive {
+		bits |= 0x01
+	}
+	if durable {
+		bits |= 0x02
+	}
+	if autoDelete {
+		bits |= 0x04
+	}
+	if internal {
+		bits |= 0x08
+	}
+	if noWait {
+		bits |= 0x10
+	}
+	_ = enc.WriteUint8(bits)
+	_ = enc.WriteTable(args)
+	return enc.Bytes()
+}
+
+// encodeExchangeDelete builds an Exchange.Delete method payload.
+func encodeExchangeDelete(
+	exchange string,
+	ifUnused, noWait bool,
+) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(0) // reserved-1
+	_ = enc.WriteShortString(exchange)
+	var bits uint8
+	if ifUnused {
+		bits |= 0x01
+	}
+	if noWait {
+		bits |= 0x02
+	}
+	_ = enc.WriteUint8(bits)
+	return enc.Bytes()
+}
+
 // encodeQueueDeclare builds a Queue.Declare method payload.
 func encodeQueueDeclare(
 	queue string,
@@ -160,6 +210,78 @@ func encodeCancel(tag string, noWait bool) []byte {
 	}
 	_ = enc.WriteUint8(bits)
 	return enc.Bytes()
+}
+
+// TestExchangeDeclareProtocol creates an exchange via method frame.
+func TestExchangeDeclareProtocol(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	payload := encodeExchangeDeclare(
+		"ex1", "direct", false, false, false, false, false, nil,
+	)
+	handler, _ := reg.Lookup(40, 10)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("declare: %v", err)
+	}
+	if srv.ExchangeManager().Count() != 7 {
+		t.Fatalf("exchanges = %d, want 7", srv.ExchangeManager().Count())
+	}
+}
+
+// TestExchangeDeclarePassiveProtocol looks up an existing exchange.
+func TestExchangeDeclarePassiveProtocol(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	_, _ = srv.ExchangeManager().Declare(
+		"ex2", ExchangeDirect, false, false, false, nil,
+	)
+
+	payload := encodeExchangeDeclare(
+		"ex2", "direct", true, false, false, false, false, nil,
+	)
+	handler, _ := reg.Lookup(40, 10)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("declare: %v", err)
+	}
+}
+
+// TestExchangeDeleteProtocol removes an exchange via method frame.
+func TestExchangeDeleteProtocol(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	_, _ = srv.ExchangeManager().Declare(
+		"ex3", ExchangeDirect, false, false, false, nil,
+	)
+
+	payload := encodeExchangeDelete("ex3", false, false)
+	handler, _ := reg.Lookup(40, 20)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if srv.ExchangeManager().Count() != 6 {
+		t.Fatalf("exchanges = %d, want 6", srv.ExchangeManager().Count())
+	}
 }
 
 // TestQueueDeclareProtocol creates a queue via method frame.
