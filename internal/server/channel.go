@@ -71,6 +71,9 @@ func (ch *Channel) Close() {
 
 // SendFrame sends a frame on this channel through the connection.
 func (ch *Channel) SendFrame(f *amqp091.Frame) error {
+	if f == nil {
+		return nil
+	}
 	f.Channel = ch.id
 	return ch.conn.sendFrame(f)
 }
