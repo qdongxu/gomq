@@ -46,6 +46,7 @@ make test
 | Basic.Publish / Basic.Get / Basic.Consume | ✅ |
 | Basic.Ack / Basic.Nack / Basic.Reject | ✅ |
 | Basic.Qos (per-channel & global prefetch) | ✅ |
+| Basic.Recover | ✅ |
 | Connection.Close / Channel.Close | ✅ |
 | Message in-memory store | ✅ |
 | Routing & delivery | ✅ |

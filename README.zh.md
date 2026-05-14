@@ -46,6 +46,7 @@ make test
 | Basic.Publish / Basic.Get / Basic.Consume | ✅ |
 | Basic.Ack / Basic.Nack / Basic.Reject | ✅ |
 | Basic.Qos（单信道与全局预取） | ✅ |
+| Basic.Recover | ✅ |
 | Connection.Close / Channel.Close | ✅ |
 | 消息内存存储 | ✅ |
 | 路由与投递 | ✅ |
