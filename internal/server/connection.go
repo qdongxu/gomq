@@ -46,6 +46,7 @@ func NewConnection(
 	srv *Server,
 ) *Connection {
 	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
 	c := &Connection{
 		raw:      raw,
 		reader:   bufio.NewReader(raw),
@@ -150,6 +151,9 @@ func (c *Connection) setState(s ConnState) {
 
 // sendFrame writes a frame to the wire with mutex protection.
 func (c *Connection) sendFrame(f *amqp091.Frame) error {
+	if c.raw == nil {
+		return nil
+	}
 	enc := amqp091.NewEncoder()
 	if err := enc.EncodeFrame(f); err != nil {
 		return err

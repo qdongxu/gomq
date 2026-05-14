@@ -71,6 +71,17 @@ func (d *Decoder) ReadInt64() (int64, error) {
 	return int64(v), err
 }
 
+// ReadShortString reads a 1-byte-length-prefixed string (AMQP shortstr).
+func (d *Decoder) ReadShortString() (string, error) {
+	length, err := d.ReadUint8()
+	if err != nil {
+		return "", err
+	}
+	b := make([]byte, length)
+	_, err = io.ReadFull(d.r, b)
+	return string(b), err
+}
+
 // ReadBool reads a single boolean octet.
 func (d *Decoder) ReadBool() (bool, error) {
 	v, err := d.ReadUint8()
