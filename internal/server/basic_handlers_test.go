@@ -604,6 +604,19 @@ func TestBasicCancelNoWait(t *testing.T) {
 	}
 }
 
+// encodeQos builds a Basic.Qos method payload.
+func encodeQos(prefetchSize uint32, prefetchCount uint16, global bool) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint32(prefetchSize)
+	_ = enc.WriteUint16(prefetchCount)
+	var bits uint8
+	if global {
+		bits |= 0x01
+	}
+	_ = enc.WriteUint8(bits)
+	return enc.Bytes()
+}
+
 // encodeConnectionClose builds a Connection.Close method payload.
 func encodeConnectionClose(
 	replyCode uint16,
@@ -751,5 +764,65 @@ func TestQueueUnbindProtocol(t *testing.T) {
 	}
 	if len(srv.BindingManager().GetBindings("")) != 0 {
 		t.Fatalf("bindings = %d, want 0", len(srv.BindingManager().GetBindings("")))
+	}
+}
+
+// TestBasicQos sets a per-channel prefetch limit via protocol frame.
+func TestBasicQos(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	payload := encodeQos(0, 3, false)
+	handler, _ := reg.Lookup(60, 10)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("qos: %v", err)
+	}
+
+	// verify the limit is active
+	p := srv.Prefetch()
+	p.RecordDelivery(1)
+	p.RecordDelivery(1)
+	if !p.CanDeliver(1) {
+		t.Fatal("should allow up to prefetch count")
+	}
+	p.RecordDelivery(1)
+	if p.CanDeliver(1) {
+		t.Fatal("should block after reaching prefetch count")
+	}
+}
+
+// TestBasicQosGlobal sets a connection-level prefetch limit.
+func TestBasicQosGlobal(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	payload := encodeQos(0, 2, true)
+	handler, _ := reg.Lookup(60, 10)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("qos global: %v", err)
+	}
+
+	// global limit applies across channels
+	p := srv.Prefetch()
+	p.RecordDelivery(1)
+	p.RecordDelivery(2)
+	if p.CanDeliver(3) {
+		t.Fatal("global limit should block new delivery")
+	}
+	p.AckDelivery(1)
+	if !p.CanDeliver(3) {
+		t.Fatal("global limit should allow after ack")
 	}
 }

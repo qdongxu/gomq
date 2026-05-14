@@ -14,6 +14,7 @@ func RegisterBasicHandlers(
 ) {
 	reg.Register(10, 50, handleConnectionClose(srv))
 	reg.Register(20, 40, handleChannelClose(srv))
+	reg.Register(60, 10, handleQos(srv))
 	reg.Register(60, 20, handleConsume(srv))
 	reg.Register(60, 30, handleCancel(srv))
 	reg.Register(60, 40, handlePublish(srv))
@@ -27,6 +28,43 @@ func RegisterBasicHandlers(
 	reg.Register(50, 50, handleQueueUnbind(srv))
 	reg.Register(40, 10, handleExchangeDeclare(srv))
 	reg.Register(40, 20, handleExchangeDelete(srv))
+}
+
+// handleQos decodes Basic.Qos and updates the channel prefetch limit.
+func handleQos(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		prefetchSize, err := dec.ReadUint32()
+		if err != nil {
+			return err
+		}
+
+		prefetchCount, err := dec.ReadUint16()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		global := bits&0x01 != 0
+
+		srv.Prefetch().SetChannelPrefetch(
+			ch.ID(), prefetchCount, uint16(prefetchSize), global,
+		)
+
+		enc := amqp091.NewEncoder()
+		_ = enc.WriteUint16(60) // class
+		_ = enc.WriteUint16(11) // QosOk
+		_ = ch.SendFrame(
+			&amqp091.Frame{
+				Type:    amqp091.FrameMethod,
+				Payload: enc.Bytes(),
+			})
+		return nil
+	}
 }
 
 // handleConsume decodes Basic.Consume and subscribes a consumer.

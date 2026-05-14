@@ -36,6 +36,23 @@ make test
 
 ## 状态
 
+| 功能 | 状态 |
+|---------|--------|
+| AMQP 0-9-1 协议编解码 | ✅ |
+| 连接握手与心跳 | ✅ |
+| 信道多路复用 | ✅ |
+| 交换机声明/删除（direct、fanout） | ✅ |
+| 队列声明/删除/绑定/解绑 | ✅ |
+| Basic.Publish / Basic.Get / Basic.Consume | ✅ |
+| Basic.Ack / Basic.Nack / Basic.Reject | ✅ |
+| Basic.Qos（单信道与全局预取） | ✅ |
+| Connection.Close / Channel.Close | ✅ |
+| 消息内存存储 | ✅ |
+| 路由与投递 | ✅ |
+| etcd 持久化 | 开发中 |
+| Web 管理端（htmx） | 开发中 |
+| 集群 | 开发中 |
+
 开发中 — 文档和功能随代码实现持续更新。
 
 ## 许可证
