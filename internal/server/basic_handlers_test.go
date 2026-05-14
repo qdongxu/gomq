@@ -603,3 +603,81 @@ func TestBasicCancelNoWait(t *testing.T) {
 		t.Fatalf("cancel: %v", err)
 	}
 }
+
+// encodeQueueBind builds a Queue.Bind method payload.
+func encodeQueueBind(
+	queue, exchange, routingKey string,
+	noWait bool,
+	args map[string]interface{},
+) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(0) // reserved-1
+	_ = enc.WriteShortString(queue)
+	_ = enc.WriteShortString(exchange)
+	_ = enc.WriteShortString(routingKey)
+	var bits uint8
+	if noWait {
+		bits |= 0x01
+	}
+	_ = enc.WriteUint8(bits)
+	_ = enc.WriteTable(args)
+	return enc.Bytes()
+}
+
+// encodeQueueUnbind builds a Queue.Unbind method payload.
+func encodeQueueUnbind(
+	queue, exchange, routingKey string,
+	args map[string]interface{},
+) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(0) // reserved-1
+	_ = enc.WriteShortString(queue)
+	_ = enc.WriteShortString(exchange)
+	_ = enc.WriteShortString(routingKey)
+	_ = enc.WriteTable(args)
+	return enc.Bytes()
+}
+
+// TestQueueBindProtocol creates a binding via method frame.
+func TestQueueBindProtocol(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	payload := encodeQueueBind("q1", "", "key1", false, nil)
+	handler, _ := reg.Lookup(50, 20)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	if len(srv.BindingManager().GetBindings("")) != 1 {
+		t.Fatalf("bindings = %d, want 1", len(srv.BindingManager().GetBindings("")))
+	}
+}
+
+// TestQueueUnbindProtocol removes a binding via method frame.
+func TestQueueUnbindProtocol(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	_, _ = srv.BindingManager().Bind("", "q1", "key1", nil)
+
+	payload := encodeQueueUnbind("q1", "", "key1", nil)
+	handler, _ := reg.Lookup(50, 50)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("unbind: %v", err)
+	}
+	if len(srv.BindingManager().GetBindings("")) != 0 {
+		t.Fatalf("bindings = %d, want 0", len(srv.BindingManager().GetBindings("")))
+	}
+}

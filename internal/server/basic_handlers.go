@@ -20,7 +20,9 @@ func RegisterBasicHandlers(
 	reg.Register(60, 90, handleReject(srv))
 	reg.Register(60, 120, handleNack(srv))
 	reg.Register(50, 10, handleQueueDeclare(srv))
+	reg.Register(50, 20, handleQueueBind(srv))
 	reg.Register(50, 40, handleQueueDelete(srv))
+	reg.Register(50, 50, handleQueueUnbind(srv))
 	reg.Register(40, 10, handleExchangeDeclare(srv))
 	reg.Register(40, 20, handleExchangeDelete(srv))
 }
@@ -313,6 +315,56 @@ func handleQueueDeclare(srv *Server) MethodHandler {
 	}
 }
 
+// handleQueueBind decodes Queue.Bind and creates a binding.
+func handleQueueBind(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		queue, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		exchange, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		routingKey, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		noWait := bits&0x01 != 0
+
+		args, err := dec.ReadTable()
+		if err != nil {
+			return err
+		}
+
+		srv.BindingManager().Bind(exchange, queue, routingKey, args)
+
+		if !noWait {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(50) // class
+			_ = enc.WriteUint16(21) // BindOk
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
+		return nil
+	}
+}
+
 // handleQueueDelete decodes Queue.Delete and removes a queue.
 func handleQueueDelete(srv *Server) MethodHandler {
 	return func(ch *Channel, payload []byte) error {
@@ -347,6 +399,48 @@ func handleQueueDelete(srv *Server) MethodHandler {
 					Payload: enc.Bytes(),
 				})
 		}
+		return nil
+	}
+}
+
+// handleQueueUnbind decodes Queue.Unbind and removes a binding.
+func handleQueueUnbind(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		queue, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		exchange, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		routingKey, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		_, err = dec.ReadTable()
+		if err != nil {
+			return err
+		}
+
+		srv.BindingManager().Unbind(exchange, queue, routingKey)
+
+		enc := amqp091.NewEncoder()
+		_ = enc.WriteUint16(50) // class
+		_ = enc.WriteUint16(51) // UnbindOk
+		_ = ch.SendFrame(
+			&amqp091.Frame{
+				Type:    amqp091.FrameMethod,
+				Payload: enc.Bytes(),
+			})
 		return nil
 	}
 }
