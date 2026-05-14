@@ -61,6 +61,7 @@ func Default() *Config {
 			Output: "stdout",
 		},
 		Cluster: Cluster{
+			NodeID:    "node-1",
 			Discovery: "static",
 		},
 		Web: Web{
