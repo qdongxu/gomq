@@ -21,7 +21,7 @@ func RegisterBasicHandlers(
 	reg.Register(60, 70, handleGet(srv))
 	reg.Register(60, 80, handleAck(srv))
 	reg.Register(60, 90, handleReject(srv))
-	reg.Register(60, 120, handleNack(srv))
+	reg.Register(60, 110, handleRecover(srv))
 	reg.Register(50, 10, handleQueueDeclare(srv))
 	reg.Register(50, 20, handleQueueBind(srv))
 	reg.Register(50, 40, handleQueueDelete(srv))
@@ -293,6 +293,33 @@ func handleReject(srv *Server) MethodHandler {
 		requeue := bits&0x01 != 0
 
 		_ = srv.DeliveryTracker().Reject(tag, ch.ID(), requeue)
+		return nil
+	}
+}
+
+// handleRecover decodes Basic.Recover and recovers all unacknowledged
+// deliveries for the channel. When requeue is true, messages are
+// returned to their original queues; otherwise they are discarded.
+func handleRecover(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		requeue := bits&0x01 != 0
+
+		_ = srv.DeliveryTracker().RecoverAll(ch.ID(), requeue)
+
+		enc := amqp091.NewEncoder()
+		_ = enc.WriteUint16(60)  // class
+		_ = enc.WriteUint16(111) // RecoverOk
+		_ = ch.SendFrame(
+			&amqp091.Frame{
+				Type:    amqp091.FrameMethod,
+				Payload: enc.Bytes(),
+			})
 		return nil
 	}
 }

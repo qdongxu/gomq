@@ -689,6 +689,87 @@ func TestChannelClose(t *testing.T) {
 	}
 }
 
+// encodeRecover builds a Basic.Recover method payload.
+func encodeRecover(requeue bool) []byte {
+	enc := amqp091.NewEncoder()
+	var bits uint8
+	if requeue {
+		bits |= 0x01
+	}
+	_ = enc.WriteUint8(bits)
+	return enc.Bytes()
+}
+
+// TestBasicRecoverRequeue returns all unacked messages to their queue.
+func TestBasicRecoverRequeue(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	srv.MessageStore().Enqueue("q1", NewMessage([]byte("a"), Properties{}))
+	srv.MessageStore().Enqueue("q1", NewMessage([]byte("b"), Properties{}))
+
+	pc := NewPullConsumer(srv.MessageStore(), srv.DeliveryTracker())
+	_, _ = pc.Get("q1", false, 1)
+	_, _ = pc.Get("q1", false, 1)
+
+	if srv.DeliveryTracker().Count() != 2 {
+		t.Fatalf("tracker = %d, want 2", srv.DeliveryTracker().Count())
+	}
+
+	payload := encodeRecover(true)
+	handler, _ := reg.Lookup(60, 110)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("recover: %v", err)
+	}
+
+	if srv.DeliveryTracker().Count() != 0 {
+		t.Fatalf("tracker = %d, want 0", srv.DeliveryTracker().Count())
+	}
+	if srv.MessageStore().Len("q1") != 2 {
+		t.Fatalf("queue len = %d, want 2", srv.MessageStore().Len("q1"))
+	}
+}
+
+// TestBasicRecoverNoRequeue discards all unacked messages.
+func TestBasicRecoverNoRequeue(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	srv.MessageStore().Enqueue("q1", NewMessage([]byte("c"), Properties{}))
+
+	pc := NewPullConsumer(srv.MessageStore(), srv.DeliveryTracker())
+	_, _ = pc.Get("q1", false, 1)
+
+	if srv.DeliveryTracker().Count() != 1 {
+		t.Fatalf("tracker = %d, want 1", srv.DeliveryTracker().Count())
+	}
+
+	payload := encodeRecover(false)
+	handler, _ := reg.Lookup(60, 110)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("recover: %v", err)
+	}
+
+	if srv.DeliveryTracker().Count() != 0 {
+		t.Fatalf("tracker = %d, want 0", srv.DeliveryTracker().Count())
+	}
+	if srv.MessageStore().Len("q1") != 0 {
+		t.Fatalf("queue len = %d, want 0", srv.MessageStore().Len("q1"))
+	}
+}
+
 // encodeQueueBind builds a Queue.Bind method payload.
 func encodeQueueBind(
 	queue, exchange, routingKey string,

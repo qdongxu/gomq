@@ -86,7 +86,35 @@ func (t *DeliveryTracker) Reject(
 	return t.Nack(deliveryTag, channelID, requeue)
 }
 
-// GetUnacked returns all unacknowledged deliveries for a channel.
+// RecoverAll recovers all unacknowledged deliveries for a channel.
+// When requeue is true, messages are re-enqueued to their original
+// queues. Returns the number of recovered deliveries.
+func (t *DeliveryTracker) RecoverAll(
+	channelID uint16,
+	requeue bool,
+) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	chMap := t.byChannel[channelID]
+	if chMap == nil {
+		return 0
+	}
+
+	count := 0
+	if requeue {
+		for _, d := range chMap {
+			t.store.Enqueue(d.queueName, d.msg)
+			count++
+		}
+	} else {
+		count = len(chMap)
+	}
+
+	delete(t.byChannel, channelID)
+	return count
+}
+
 func (t *DeliveryTracker) GetUnacked(
 	channelID uint16,
 ) []*TrackedDelivery {
