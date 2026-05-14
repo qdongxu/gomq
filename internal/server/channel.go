@@ -69,6 +69,11 @@ func (ch *Channel) Close() {
 	ch.setState(ChanClosed)
 }
 
+// Conn returns the underlying connection.
+func (ch *Channel) Conn() *Connection {
+	return ch.conn
+}
+
 // SendFrame sends a frame on this channel through the connection.
 func (ch *Channel) SendFrame(f *amqp091.Frame) error {
 	if f == nil {

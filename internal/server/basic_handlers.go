@@ -12,6 +12,8 @@ func RegisterBasicHandlers(
 	reg *SimpleRegistry,
 	srv *Server,
 ) {
+	reg.Register(10, 50, handleConnectionClose(srv))
+	reg.Register(20, 40, handleChannelClose(srv))
 	reg.Register(60, 20, handleConsume(srv))
 	reg.Register(60, 30, handleCancel(srv))
 	reg.Register(60, 40, handlePublish(srv))
@@ -548,6 +550,73 @@ func handleExchangeDelete(srv *Server) MethodHandler {
 					Payload: enc.Bytes(),
 				})
 		}
+		return nil
+	}
+}
+
+// handleConnectionClose decodes Connection.Close and
+// closes the connection.
+func handleConnectionClose(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reply-code (short)
+		_, _ = dec.ReadUint16()
+
+		// reply-text (shortstr)
+		_, _ = dec.ReadShortString()
+
+		// class-id (short)
+		_, _ = dec.ReadUint16()
+
+		// method-id (short)
+		_, _ = dec.ReadUint16()
+
+		// Send Connection.CloseOk
+		enc := amqp091.NewEncoder()
+		_ = enc.WriteUint16(10) // class
+		_ = enc.WriteUint16(51) // CloseOk
+		_ = ch.SendFrame(
+			&amqp091.Frame{
+				Type:    amqp091.FrameMethod,
+				Payload: enc.Bytes(),
+			})
+
+		// Close the underlying connection
+		_ = ch.Conn().Close()
+		return nil
+	}
+}
+
+// handleChannelClose decodes Channel.Close and closes the channel.
+func handleChannelClose(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reply-code (short)
+		_, _ = dec.ReadUint16()
+
+		// reply-text (shortstr)
+		_, _ = dec.ReadShortString()
+
+		// class-id (short)
+		_, _ = dec.ReadUint16()
+
+		// method-id (short)
+		_, _ = dec.ReadUint16()
+
+		// Send Channel.CloseOk
+		enc := amqp091.NewEncoder()
+		_ = enc.WriteUint16(20) // class
+		_ = enc.WriteUint16(41) // CloseOk
+		_ = ch.SendFrame(
+			&amqp091.Frame{
+				Type:    amqp091.FrameMethod,
+				Payload: enc.Bytes(),
+			})
+
+		// Close the channel
+		ch.Close()
 		return nil
 	}
 }

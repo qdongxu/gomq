@@ -604,6 +604,78 @@ func TestBasicCancelNoWait(t *testing.T) {
 	}
 }
 
+// encodeConnectionClose builds a Connection.Close method payload.
+func encodeConnectionClose(
+	replyCode uint16,
+	replyText string,
+	classID, methodID uint16,
+) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(replyCode)
+	_ = enc.WriteShortString(replyText)
+	_ = enc.WriteUint16(classID)
+	_ = enc.WriteUint16(methodID)
+	return enc.Bytes()
+}
+
+// encodeChannelClose builds a Channel.Close method payload.
+func encodeChannelClose(
+	replyCode uint16,
+	replyText string,
+	classID, methodID uint16,
+) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(replyCode)
+	_ = enc.WriteShortString(replyText)
+	_ = enc.WriteUint16(classID)
+	_ = enc.WriteUint16(methodID)
+	return enc.Bytes()
+}
+
+// TestConnectionClose sends Connection.Close and verifies
+// the connection transitions to Closing state.
+func TestConnectionClose(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	payload := encodeConnectionClose(200, "normal", 0, 0)
+	handler, _ := reg.Lookup(10, 50)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if conn.State() != StateClosed {
+		t.Fatalf("state = %d, want StateClosed", conn.State())
+	}
+}
+
+// TestChannelClose sends Channel.Close and verifies
+// the channel transitions to ChanClosed state.
+func TestChannelClose(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	payload := encodeChannelClose(200, "normal", 0, 0)
+	handler, _ := reg.Lookup(20, 40)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if ch.State() != ChanClosed {
+		t.Fatalf("state = %d, want ChanClosed", ch.State())
+	}
+}
+
 // encodeQueueBind builds a Queue.Bind method payload.
 func encodeQueueBind(
 	queue, exchange, routingKey string,
