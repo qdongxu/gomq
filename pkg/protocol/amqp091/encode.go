@@ -86,6 +86,16 @@ func (e *Encoder) WriteInt64(v int64) error {
 	return e.WriteUint64(uint64(v))
 }
 
+// WriteShortString encodes a 1-byte-length-prefixed string.
+func (e *Encoder) WriteShortString(v string) error {
+	b := []byte(v)
+	if err := e.WriteUint8(uint8(len(b))); err != nil {
+		return err
+	}
+	_, err := e.buf.Write(b)
+	return err
+}
+
 // WriteString encodes a length-prefixed UTF-8 string.
 // The length prefix is a 32-bit unsigned integer.
 func (e *Encoder) WriteString(v string) error {
