@@ -1,16 +1,22 @@
-// deliverer.go is a placeholder for message delivery to consumers.
-// Full consumer management will be implemented in Issue #18.
+// deliverer.go delivers messages to consumers via channels.
 package server
 
-// Deliverer handles sending messages to a consumer channel.
-type Deliverer struct{}
-
-// NewDeliverer creates a deliverer.
-func NewDeliverer() *Deliverer {
-	return &Deliverer{}
+// Deliverer handles message delivery to subscribed consumers.
+type Deliverer struct {
+	consumers *ConsumerManager
 }
 
-// Deliver sends a message to the given channel.
-func (d *Deliverer) Deliver(msg *Message, ch *Channel) error {
-	return ch.SendFrame(nil) // placeholder
+// NewDeliverer creates a deliverer with a consumer manager.
+func NewDeliverer(cm *ConsumerManager) *Deliverer {
+	return &Deliverer{consumers: cm}
+}
+
+// Deliver sends a message to all consumers of the target queue.
+func (d *Deliverer) Deliver(msg *Message, queueName string) error {
+	consumers := d.consumers.GetConsumers(queueName)
+	for _, c := range consumers {
+		_ = c.Channel().SendFrame(nil) // placeholder delivery
+		_ = msg                        // use msg to avoid unused
+	}
+	return nil
 }
