@@ -130,9 +130,11 @@ func (c *Connection) Close() error {
 		_ = c.sendMethodFrame(0, enc.Bytes())
 	}
 
-	err := c.raw.Close()
+	if c.raw != nil {
+		_ = c.raw.Close()
+	}
 	c.setState(StateClosed)
-	return err
+	return nil
 }
 
 // State returns the current connection state safely.
