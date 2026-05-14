@@ -20,11 +20,13 @@ const (
 
 // Channel is a lightweight sub-connection for AMQP command multiplexing.
 type Channel struct {
-	id     uint16
-	conn   *Connection
-	state  ChanState
-	mu     sync.RWMutex
-	flowOn bool
+	id        uint16
+	conn      *Connection
+	state     ChanState
+	mu        sync.RWMutex
+	flowOn    bool
+	prefetch  *Prefetch
+	flowCtrl  *FlowController
 }
 
 // NewChannel creates a channel with the given ID on a connection.
@@ -84,5 +86,25 @@ func (ch *Channel) SetFlow(on bool) {
 func (ch *Channel) FlowActive() bool {
 	ch.mu.RLock()
 	defer ch.mu.RUnlock()
-	return ch.flowOn && ch.state == ChanOpen
+	if !ch.flowOn || ch.state != ChanOpen {
+		return false
+	}
+	if ch.flowCtrl != nil && !ch.flowCtrl.IsChannelActive(ch.id) {
+		return false
+	}
+	return true
+}
+
+// SetPrefetch attaches a prefetch limiter to the channel.
+func (ch *Channel) SetPrefetch(p *Prefetch) {
+	ch.mu.Lock()
+	ch.prefetch = p
+	ch.mu.Unlock()
+}
+
+// SetFlowController attaches a server-side flow controller.
+func (ch *Channel) SetFlowController(fc *FlowController) {
+	ch.mu.Lock()
+	ch.flowCtrl = fc
+	ch.mu.Unlock()
 }
