@@ -2,23 +2,44 @@
 # Copy this file and modify as needed.
 
 [network]
+# TCP bind addresses for AMQP 0-9-1 clients.
 listeners = ["0.0.0.0:5672"]
+
+# Seconds between heartbeat frames. Must be > 0.
 heartbeat = 60
+
+# Maximum frame size in bytes. Minimum 4096.
 frame_max = 131072
+
+# Maximum channels per connection. Minimum 1.
 channel_max = 2048
 
 [log]
+# Log level: debug, info, warn, error.
 level = "info"
+
+# Log output: stdout, stderr, or file path.
 output = "stdout"
 
 [cluster]
+# Unique node identifier within the cluster.
 node_id = "node-1"
+
+# Peer discovery mode: "static" or "etcd".
 discovery = "static"
+
+# Peer addresses for static discovery.
+# Format: "node_id@host:port"
 nodes = []
 
 [web]
+# Whether the management UI is enabled.
 enabled = true
+
+# HTTP bind address for the web UI.
 listen = "0.0.0.0:15672"
+
+# URL path prefix for reverse-proxy support.
 path_prefix = "/"
 
 [auth]
