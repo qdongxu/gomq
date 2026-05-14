@@ -49,6 +49,7 @@ make test
 | Basic.Recover | ✅ |
 | Connection.Close / Channel.Close | ✅ |
 | Channel.Flow（客户端到服务端） | ✅ |
+| Basic.Return（强制投递） | ✅ |
 | 消息内存存储 | ✅ |
 | 路由与投递 | ✅ |
 | etcd 持久化 | 开发中 |
