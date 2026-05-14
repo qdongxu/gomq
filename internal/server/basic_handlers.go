@@ -14,6 +14,40 @@ func RegisterBasicHandlers(
 ) {
 	reg.Register(60, 20, handleConsume(srv))
 	reg.Register(60, 30, handleCancel(srv))
+	reg.Register(60, 40, handlePublish(srv))
+}
+
+// handlePublish decodes Basic.Publish and routes the message.
+func handlePublish(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		exchange, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		routingKey, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		_ = bits&0x01 != 0 // mandatory
+		_ = bits&0x02 != 0 // immediate
+
+		msg := NewMessage(nil, Properties{})
+		msg.SetRoutingMeta(exchange, routingKey)
+		return srv.Publisher().Publish(
+			exchange, routingKey, msg, ch.ID(),
+		)
+	}
 }
 
 // handleConsume decodes Basic.Consume and subscribes a consumer.

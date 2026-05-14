@@ -6,6 +6,26 @@ import (
 	"github.com/qdongxu/gomq/pkg/protocol/amqp091"
 )
 
+// encodePublish builds a Basic.Publish method payload.
+func encodePublish(
+	exchange, routingKey string,
+	mandatory, immediate bool,
+) []byte {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(0) // reserved-1
+	_ = enc.WriteShortString(exchange)
+	_ = enc.WriteShortString(routingKey)
+	var bits uint8
+	if mandatory {
+		bits |= 0x01
+	}
+	if immediate {
+		bits |= 0x02
+	}
+	_ = enc.WriteUint8(bits)
+	return enc.Bytes()
+}
+
 // encodeConsume builds a Basic.Consume method payload.
 func encodeConsume(
 	queue, tag string,
@@ -44,6 +64,61 @@ func encodeCancel(tag string, noWait bool) []byte {
 	}
 	_ = enc.WriteUint8(bits)
 	return enc.Bytes()
+}
+
+// TestBasicPublish routes a message via method frame.
+func TestBasicPublish(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	_, _ = srv.ExchangeManager().Declare(
+		"amq.direct", ExchangeDirect,
+		false, false, false, nil,
+	)
+	_, _ = srv.QueueManager().Declare("q1", false, false, false, nil, nil)
+	_, _ = srv.BindingManager().Bind("amq.direct", "q1", "news", nil)
+
+	payload := encodePublish("amq.direct", "news", false, false)
+	handler, _ := reg.Lookup(60, 40)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	if srv.MessageStore().Len("q1") != 1 {
+		t.Fatalf("queue len = %d, want 1", srv.MessageStore().Len("q1"))
+	}
+}
+
+// TestBasicPublishNoRoute stores nothing when no queue matches.
+func TestBasicPublishNoRoute(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	_, _ = srv.ExchangeManager().Declare(
+		"amq.direct", ExchangeDirect,
+		false, false, false, nil,
+	)
+	_, _ = srv.QueueManager().Declare("q1", false, false, false, nil, nil)
+
+	payload := encodePublish("amq.direct", "missing", false, false)
+	handler, _ := reg.Lookup(60, 40)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	if srv.MessageStore().Len("q1") != 0 {
+		t.Fatalf("queue len = %d, want 0", srv.MessageStore().Len("q1"))
+	}
 }
 
 // TestBasicConsume subscribes a consumer via method frame.
