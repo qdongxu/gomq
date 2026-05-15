@@ -77,7 +77,7 @@ func TestDirectRoute(t *testing.T) {
 		{ExchangeName: "", QueueName: "q3", RoutingKey: "news"},
 	}
 	router := ex.Router()
-	queues := router.Route("news", bindings)
+	queues := router.Route("news", nil, bindings)
 	if len(queues) != 2 {
 		t.Fatalf("len = %d, want 2", len(queues))
 	}
@@ -91,7 +91,7 @@ func TestFanoutRoute(t *testing.T) {
 		{ExchangeName: "", QueueName: "q2", RoutingKey: "ignore"},
 	}
 	router := ex.Router()
-	queues := router.Route("anything", bindings)
+	queues := router.Route("anything", nil, bindings)
 	if len(queues) != 2 {
 		t.Fatalf("len = %d, want 2", len(queues))
 	}
@@ -118,7 +118,7 @@ func TestDefaultDirectRoute(t *testing.T) {
 		{ExchangeName: "", QueueName: "my-queue", RoutingKey: "my-queue"},
 	}
 	router := ex.Router()
-	queues := router.Route("my-queue", bindings)
+	queues := router.Route("my-queue", nil, bindings)
 	if len(queues) != 1 || queues[0] != "my-queue" {
 		t.Fatalf("queues = %v, want [my-queue]", queues)
 	}

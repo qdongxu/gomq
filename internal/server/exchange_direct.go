@@ -7,6 +7,7 @@ type DirectExchange struct{}
 // Route returns queue names whose binding routing key equals msgRoutingKey.
 func (e *DirectExchange) Route(
 	msgRoutingKey string,
+	_ map[string]interface{},
 	bindings []*Binding,
 ) []string {
 	var queues []string

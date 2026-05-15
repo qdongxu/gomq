@@ -28,7 +28,7 @@ func TestTopicExchangeRoute(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		got := te.Route(c.key, bindings)
+		got := te.Route(c.key, nil, bindings)
 		if !sameStrings(got, c.expected) {
 			t.Fatalf("Route(%q) = %v, want %v", c.key, got, c.expected)
 		}
@@ -48,7 +48,7 @@ func TestTopicExchangeNoMatch(t *testing.T) {
 	}
 
 	for _, key := range cases {
-		got := te.Route(key, bindings)
+		got := te.Route(key, nil, bindings)
 		if len(got) != 0 {
 			t.Fatalf("Route(%q) = %v, want []", key, got)
 		}
@@ -61,12 +61,12 @@ func TestTopicExchangeExact(t *testing.T) {
 		{QueueName: "q1", RoutingKey: "exact.key"},
 	}
 
-	got := te.Route("exact.key", bindings)
+	got := te.Route("exact.key", nil, bindings)
 	if !sameStrings(got, []string{"q1"}) {
 		t.Fatalf("exact match failed: %v", got)
 	}
 
-	got2 := te.Route("exact.other", bindings)
+	got2 := te.Route("exact.other", nil, bindings)
 	if len(got2) != 0 {
 		t.Fatalf("non-match returned: %v", got2)
 	}

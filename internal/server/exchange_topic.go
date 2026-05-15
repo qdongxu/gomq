@@ -11,6 +11,7 @@ type TopicExchange struct{}
 // Route returns queue names whose binding pattern matches msgRoutingKey.
 func (e *TopicExchange) Route(
 	msgRoutingKey string,
+	_ map[string]interface{},
 	bindings []*Binding,
 ) []string {
 	var queues []string
