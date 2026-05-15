@@ -58,7 +58,7 @@ make test
 | etcd persistence (etcd backend) | WIP |
 | Load persisted state on startup | ✅ |
 | Web management UI (htmx) | ✅ |
-| Clustering | WIP |
+| Clustering | ✅ |
 
 WIP — documentation and features will be updated as code evolves.
 
