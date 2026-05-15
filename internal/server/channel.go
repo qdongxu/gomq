@@ -18,17 +18,26 @@ const (
 	ChanClosed
 )
 
+// txEntry holds a message staged during a transaction.
+type txEntry struct {
+	exchange   string
+	routingKey string
+	msg        *Message
+}
+
 // Channel is a lightweight sub-connection for AMQP command multiplexing.
 type Channel struct {
-	id           uint16
-	conn         *Connection
-	state        ChanState
-	mu           sync.RWMutex
-	flowOn       bool
-	prefetch     *Prefetch
-	flowCtrl     *FlowController
-	confirmMode  bool
-	deliveryTag  uint64
+	id          uint16
+	conn        *Connection
+	state       ChanState
+	mu          sync.RWMutex
+	flowOn      bool
+	prefetch    *Prefetch
+	flowCtrl    *FlowController
+	confirmMode bool
+	deliveryTag uint64
+	txMode      bool
+	txPending   []txEntry
 }
 
 // NewChannel creates a channel with the given ID on a connection.
@@ -140,4 +149,45 @@ func (ch *Channel) NextDeliveryTag() uint64 {
 	defer ch.mu.Unlock()
 	ch.deliveryTag++
 	return ch.deliveryTag
+}
+
+// SetTxMode enables transaction mode on the channel.
+func (ch *Channel) SetTxMode() {
+	ch.mu.Lock()
+	ch.txMode = true
+	ch.mu.Unlock()
+}
+
+// IsTxMode reports whether the channel is in transaction mode.
+func (ch *Channel) IsTxMode() bool {
+	ch.mu.RLock()
+	defer ch.mu.RUnlock()
+	return ch.txMode
+}
+
+// StageTxPublish adds a message to the transactional pending list.
+func (ch *Channel) StageTxPublish(exchange, routingKey string, msg *Message) {
+	ch.mu.Lock()
+	ch.txPending = append(ch.txPending, txEntry{
+		exchange:   exchange,
+		routingKey: routingKey,
+		msg:        msg,
+	})
+	ch.mu.Unlock()
+}
+
+// CommitTx returns all staged messages and clears the pending list.
+func (ch *Channel) CommitTx() []txEntry {
+	ch.mu.Lock()
+	pending := ch.txPending
+	ch.txPending = nil
+	ch.mu.Unlock()
+	return pending
+}
+
+// RollbackTx discards all staged messages.
+func (ch *Channel) RollbackTx() {
+	ch.mu.Lock()
+	ch.txPending = nil
+	ch.mu.Unlock()
 }

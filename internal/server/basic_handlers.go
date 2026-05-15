@@ -31,6 +31,9 @@ func RegisterBasicHandlers(
 	reg.Register(40, 10, handleExchangeDeclare(srv))
 	reg.Register(40, 20, handleExchangeDelete(srv))
 	reg.Register(85, 10, handleConfirmSelect(srv))
+	reg.Register(90, 10, handleTxSelect(srv))
+	reg.Register(90, 20, handleTxCommit(srv))
+	reg.Register(90, 30, handleTxRollback(srv))
 }
 
 // handleQos decodes Basic.Qos and updates the channel prefetch limit.
@@ -186,7 +189,10 @@ func handlePublish(srv *Server) MethodHandler {
 		msg.SetRoutingMeta(exchange, routingKey)
 
 		var routed int
-		if ch.IsConfirmMode() {
+		if ch.IsTxMode() {
+			ch.StageTxPublish(exchange, routingKey, msg)
+			routed = 0 // will route on commit
+		} else if ch.IsConfirmMode() {
 			tag := ch.NextDeliveryTag()
 			routed, err = srv.Publisher().Publish(
 				exchange, routingKey, msg, ch.ID(),
@@ -270,6 +276,96 @@ func handleConfirmSelect(srv *Server) MethodHandler {
 		}
 		return nil
 	}
+}
+
+// handleTxSelect decodes Tx.Select and enables transaction mode
+// on the channel. Returns precondition-failed if confirm mode is
+// already active.
+func handleTxSelect(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		// no arguments
+		if ch.IsConfirmMode() {
+			return sendChannelClose(ch, 406, "PRECONDITION_FAILED",
+				"transactions and publisher confirms are mutually exclusive")
+		}
+		ch.SetTxMode()
+		enc := amqp091.NewEncoder()
+		_ = enc.WriteUint16(90)   // class Tx
+		_ = enc.WriteUint16(11)   // SelectOk
+		_ = ch.SendFrame(
+			&amqp091.Frame{
+				Type:    amqp091.FrameMethod,
+				Payload: enc.Bytes(),
+			})
+		return nil
+	}
+}
+
+// handleTxCommit decodes Tx.Commit and flushes all staged
+// messages on the channel.
+func handleTxCommit(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		// no arguments
+		entries := ch.CommitTx()
+		var lastRouted int
+		for _, e := range entries {
+			routed, err := srv.Publisher().Publish(
+				e.exchange, e.routingKey, e.msg, ch.ID(),
+			)
+			if err != nil {
+				return err
+			}
+			lastRouted = routed
+		}
+		_ = lastRouted
+		enc := amqp091.NewEncoder()
+		_ = enc.WriteUint16(90)   // class Tx
+		_ = enc.WriteUint16(21)   // CommitOk
+		_ = ch.SendFrame(
+			&amqp091.Frame{
+				Type:    amqp091.FrameMethod,
+				Payload: enc.Bytes(),
+			})
+		return nil
+	}
+}
+
+// handleTxRollback decodes Tx.Rollback and discards all staged
+// messages on the channel.
+func handleTxRollback(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		// no arguments
+		ch.RollbackTx()
+		enc := amqp091.NewEncoder()
+		_ = enc.WriteUint16(90)   // class Tx
+		_ = enc.WriteUint16(31)   // RollbackOk
+		_ = ch.SendFrame(
+			&amqp091.Frame{
+				Type:    amqp091.FrameMethod,
+				Payload: enc.Bytes(),
+			})
+		return nil
+	}
+}
+
+// sendChannelClose builds and sends a Channel.Close frame with
+// the given reply code and text, then closes the channel.
+func sendChannelClose(ch *Channel, code uint16, text, detail string) error {
+	enc := amqp091.NewEncoder()
+	_ = enc.WriteUint16(20) // class Channel
+	_ = enc.WriteUint16(40) // Close
+	_ = enc.WriteUint16(code)
+	_ = enc.WriteShortString(text)
+	_ = enc.WriteShortString(detail)
+	_ = enc.WriteUint16(0) // class-id
+	_ = enc.WriteUint16(0) // method-id
+	err := ch.SendFrame(
+		&amqp091.Frame{
+			Type:    amqp091.FrameMethod,
+			Payload: enc.Bytes(),
+		})
+	ch.Close()
+	return err
 }
 
 // handleGet decodes Basic.Get and fetches one message from a queue.
