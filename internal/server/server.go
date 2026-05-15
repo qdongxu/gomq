@@ -2,6 +2,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
@@ -21,6 +22,7 @@ type Server struct {
 	tracker     *DeliveryTracker
 	prefetch    *Prefetch
 	flowCtrl    *FlowController
+	metaStore   store.Store
 	listener    net.Listener
 	mu          sync.RWMutex
 	wg          sync.WaitGroup
@@ -58,7 +60,58 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		tracker:   tracker,
 		prefetch:  prefetch,
 		flowCtrl:  flowCtrl,
+		metaStore: metaStore,
 	}
+}
+
+// RestoreFromStore loads all persisted queues, exchanges, and
+// bindings from the given store into memory. Call after creating
+// the server but before serving connections.
+func (s *Server) RestoreFromStore(ctx context.Context) error {
+	if s.metaStore == nil {
+		return nil
+	}
+
+	queues, err := s.metaStore.LoadQueues(ctx)
+	if err != nil {
+		return fmt.Errorf("load queues: %w", err)
+	}
+	for _, meta := range queues {
+		_, _ = s.queues.Declare(meta.Name, meta.Durable,
+			meta.Exclusive, meta.AutoDelete, meta.Args, nil)
+	}
+
+	exchanges, err := s.metaStore.LoadExchanges(ctx)
+	if err != nil {
+		return fmt.Errorf("load exchanges: %w", err)
+	}
+	for _, meta := range exchanges {
+		var et ExchangeType
+		switch meta.Type {
+		case "direct":
+			et = ExchangeDirect
+		case "fanout":
+			et = ExchangeFanout
+		case "topic":
+			et = ExchangeTopic
+		case "headers":
+			et = ExchangeHeaders
+		default:
+			et = ExchangeDirect
+		}
+		_, _ = s.exchanges.Declare(meta.Name, et, meta.Durable,
+			meta.AutoDelete, meta.Internal, meta.Args)
+	}
+
+	bindings, err := s.metaStore.LoadBindings(ctx)
+	if err != nil {
+		return fmt.Errorf("load bindings: %w", err)
+	}
+	for _, meta := range bindings {
+		_, _ = s.bindings.Bind(meta.Exchange, meta.Queue,
+			meta.RoutingKey, meta.Args)
+	}
+	return nil
 }
 
 // Listen starts a TCP listener on the given address.
