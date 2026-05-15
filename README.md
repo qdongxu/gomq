@@ -42,7 +42,7 @@ make test
 | Connection handshake & heartbeat | ✅ |
 | Channel multiplexing | ✅ |
 | Exchange declare / delete (direct, fanout) | ✅ |
-| Queue declare / delete / bind / unbind | ✅ |
+| Queue declare / delete / bind / unbind / purge | ✅ |
 | Basic.Publish / Basic.Get / Basic.Consume | ✅ |
 | Basic.Ack / Basic.Nack / Basic.Reject | ✅ |
 | Basic.Qos (per-channel & global prefetch) | ✅ |
