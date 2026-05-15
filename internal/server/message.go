@@ -28,6 +28,7 @@ type Message struct {
 	exchange    string
 	routingKey  string
 	deliveryTag uint64
+	enqueuedAt  time.Time
 }
 
 // NewMessage creates a message with payload and properties.
@@ -53,9 +54,19 @@ func (m *Message) DeliveryTag() uint64 {
 	return m.deliveryTag
 }
 
+// EnqueuedAt returns the time the message was enqueued.
+func (m *Message) EnqueuedAt() time.Time {
+	return m.enqueuedAt
+}
+
 // SetDeliveryTag assigns a delivery tag.
 func (m *Message) SetDeliveryTag(tag uint64) {
 	m.deliveryTag = tag
+}
+
+// SetEnqueuedAt records the enqueue timestamp.
+func (m *Message) SetEnqueuedAt(t time.Time) {
+	m.enqueuedAt = t
 }
 
 // Exchange returns the source exchange name.

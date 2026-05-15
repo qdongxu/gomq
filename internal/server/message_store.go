@@ -63,7 +63,14 @@ func (s *MessageStore) Purge(queueName string) {
 	s.mu.Unlock()
 }
 
-// AllQueues returns a snapshot of existing queue names.
+// EnqueuePriority inserts a message maintaining descending priority order.
+func (s *MessageStore) EnqueuePriority(queueName string, msg *Message) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.queues[queueName] = insertByPriority(
+		s.queues[queueName], msg,
+	)
+}
 func (s *MessageStore) AllQueues() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
