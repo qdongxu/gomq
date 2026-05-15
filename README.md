@@ -56,6 +56,7 @@ make test
 | Routing & delivery | ✅ |
 | etcd persistence (Store interface + memory backend) | ✅ |
 | etcd persistence (etcd backend) | WIP |
+| Load persisted state on startup | ✅ |
 | Web management UI (htmx) | WIP |
 | Clustering | WIP |
 
