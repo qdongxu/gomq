@@ -54,7 +54,8 @@ make test
 | Transaction support (Tx.Select / Tx.Commit / Tx.Rollback) | ✅ |
 | Message in-memory store | ✅ |
 | Routing & delivery | ✅ |
-| etcd persistence | WIP |
+| etcd persistence (Store interface + memory backend) | ✅ |
+| etcd persistence (etcd backend) | WIP |
 | Web management UI (htmx) | WIP |
 | Clustering | WIP |
 

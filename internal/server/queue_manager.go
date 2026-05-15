@@ -2,20 +2,31 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"sync"
+
+	"github.com/qdongxu/gomq/internal/store"
 )
 
 // QueueManager tracks all queues for a single vhost.
 type QueueManager struct {
-	queues map[string]*Queue
-	mu     sync.RWMutex
+	queues    map[string]*Queue
+	metaStore store.Store
+	mu        sync.RWMutex
 }
 
 // NewQueueManager creates an empty queue manager.
 func NewQueueManager() *QueueManager {
+	return NewQueueManagerWithStore(nil)
+}
+
+// NewQueueManagerWithStore creates a queue manager with an optional
+// backing store.
+func NewQueueManagerWithStore(metaStore store.Store) *QueueManager {
 	return &QueueManager{
-		queues: make(map[string]*Queue),
+		queues:    make(map[string]*Queue),
+		metaStore: metaStore,
 	}
 }
 
@@ -41,6 +52,16 @@ func (m *QueueManager) Declare(
 
 	q := NewQueue(name, durable, exclusive, autoDelete, args, owner)
 	m.queues[name] = q
+
+	if m.metaStore != nil {
+		_ = m.metaStore.SaveQueue(context.Background(), store.QueueMeta{
+			Name:       name,
+			Durable:    durable,
+			Exclusive:  exclusive,
+			AutoDelete: autoDelete,
+			Args:       args,
+		})
+	}
 	return q, nil
 }
 
@@ -52,6 +73,10 @@ func (m *QueueManager) Delete(name string) error {
 		return fmt.Errorf("queue %q not found", name)
 	}
 	delete(m.queues, name)
+
+	if m.metaStore != nil {
+		_ = m.metaStore.DeleteQueue(context.Background(), name)
+	}
 	return nil
 }
 

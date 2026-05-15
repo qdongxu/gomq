@@ -2,8 +2,11 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"sync"
+
+	"github.com/qdongxu/gomq/internal/store"
 )
 
 // BindingManager tracks all bindings and indexes them by exchange
@@ -11,14 +14,22 @@ import (
 type BindingManager struct {
 	byExchange map[string][]*Binding
 	byQueue    map[string][]*Binding
+	metaStore  store.Store
 	mu         sync.RWMutex
 }
 
 // NewBindingManager creates an empty binding manager.
 func NewBindingManager() *BindingManager {
+	return NewBindingManagerWithStore(nil)
+}
+
+// NewBindingManagerWithStore creates a manager with an optional
+// backing store.
+func NewBindingManagerWithStore(metaStore store.Store) *BindingManager {
 	return &BindingManager{
 		byExchange: make(map[string][]*Binding),
 		byQueue:    make(map[string][]*Binding),
+		metaStore:  metaStore,
 	}
 }
 
@@ -33,6 +44,15 @@ func (m *BindingManager) Bind(
 	b := NewBinding(exchange, queue, routingKey, args)
 	m.byExchange[exchange] = append(m.byExchange[exchange], b)
 	m.byQueue[queue] = append(m.byQueue[queue], b)
+
+	if m.metaStore != nil {
+		_ = m.metaStore.SaveBinding(context.Background(), store.BindingMeta{
+			Exchange:   exchange,
+			Queue:      queue,
+			RoutingKey: routingKey,
+			Args:       args,
+		})
+	}
 	return b, nil
 }
 
@@ -53,6 +73,10 @@ func (m *BindingManager) Unbind(
 	)
 	if !found {
 		return fmt.Errorf("binding not found")
+	}
+
+	if m.metaStore != nil {
+		_ = m.metaStore.DeleteBinding(context.Background(), exchange, queue, routingKey)
 	}
 	return nil
 }
