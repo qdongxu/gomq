@@ -42,7 +42,7 @@ make test
 | 连接握手与心跳 | ✅ |
 | 信道多路复用 | ✅ |
 | 交换机声明/删除（direct、fanout） | ✅ |
-| 队列声明/删除/绑定/解绑 | ✅ |
+| 队列声明/删除/绑定/解绑/清空 | ✅ |
 | Basic.Publish / Basic.Get / Basic.Consume | ✅ |
 | Basic.Ack / Basic.Nack / Basic.Reject | ✅ |
 | Basic.Qos（单信道与全局预取） | ✅ |

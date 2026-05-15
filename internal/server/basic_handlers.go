@@ -26,6 +26,7 @@ func RegisterBasicHandlers(
 	reg.Register(60, 120, handleNack(srv))
 	reg.Register(50, 10, handleQueueDeclare(srv))
 	reg.Register(50, 20, handleQueueBind(srv))
+	reg.Register(50, 30, handleQueuePurge(srv))
 	reg.Register(50, 40, handleQueueDelete(srv))
 	reg.Register(50, 50, handleQueueUnbind(srv))
 	reg.Register(40, 10, handleExchangeDeclare(srv))
@@ -641,6 +642,44 @@ func handleQueueDelete(srv *Server) MethodHandler {
 			_ = enc.WriteUint16(50) // class
 			_ = enc.WriteUint16(41) // DeleteOk
 			_ = enc.WriteUint32(0)  // message-count
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
+		return nil
+	}
+}
+
+// handleQueuePurge decodes Queue.Purge and removes all
+// messages from a queue.
+func handleQueuePurge(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		queue, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		noWait := bits&0x01 != 0
+
+		count := uint32(srv.MessageStore().Len(queue))
+		srv.MessageStore().Purge(queue)
+
+		if !noWait {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(50) // class
+			_ = enc.WriteUint16(31) // PurgeOk
+			_ = enc.WriteUint32(count)
 			_ = ch.SendFrame(
 				&amqp091.Frame{
 					Type:    amqp091.FrameMethod,
