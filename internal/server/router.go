@@ -44,7 +44,7 @@ func (r *MessageRouter) Route(
 	}
 
 	bindings := r.bindings.GetBindings(exchangeName)
-	queues := router.Route(routingKey, bindings)
+	queues := router.Route(routingKey, headers, bindings)
 	return queues, nil
 }
 

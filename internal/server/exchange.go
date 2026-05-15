@@ -23,7 +23,7 @@ type Exchange struct {
 
 // Router routes a message to queue names via bindings.
 type Router interface {
-	Route(routingKey string, bindings []*Binding) []string
+	Route(routingKey string, headers map[string]interface{}, bindings []*Binding) []string
 }
 
 // NewExchange creates an exchange with the given properties.
@@ -55,6 +55,8 @@ func (e *Exchange) Router() Router {
 		return &FanoutExchange{}
 	case ExchangeTopic:
 		return &TopicExchange{}
+	case ExchangeHeaders:
+		return &HeadersExchange{}
 	}
 	return nil
 }

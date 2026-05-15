@@ -48,7 +48,7 @@ func (p *Publisher) Publish(
 	}
 
 	bindings := p.bindings.GetBindings(exchangeName)
-	queues := ex.Router().Route(routingKey, bindings)
+	queues := ex.Router().Route(routingKey, msg.properties.Headers, bindings)
 
 	for _, qn := range queues {
 		p.store.Enqueue(qn, msg)

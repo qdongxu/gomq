@@ -41,7 +41,7 @@ make test
 | AMQP 0-9-1 wire protocol | ✅ |
 | Connection handshake & heartbeat | ✅ |
 | Channel multiplexing | ✅ |
-| Exchange declare / delete (direct, fanout, topic) | ✅ |
+| Exchange declare / delete (direct, fanout, topic, headers) | ✅ |
 | Queue declare / delete / bind / unbind / purge | ✅ |
 | Basic.Publish / Basic.Get / Basic.Consume | ✅ |
 | Basic.Ack / Basic.Nack / Basic.Reject | ✅ |

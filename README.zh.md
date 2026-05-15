@@ -41,7 +41,7 @@ make test
 | AMQP 0-9-1 协议编解码 | ✅ |
 | 连接握手与心跳 | ✅ |
 | 信道多路复用 | ✅ |
-| 交换机声明/删除（direct、fanout、topic） | ✅ |
+| 交换机声明/删除（direct、fanout、topic、headers） | ✅ |
 | 队列声明/删除/绑定/解绑/清空 | ✅ |
 | Basic.Publish / Basic.Get / Basic.Consume | ✅ |
 | Basic.Ack / Basic.Nack / Basic.Reject | ✅ |

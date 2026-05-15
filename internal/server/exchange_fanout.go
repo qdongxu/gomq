@@ -7,6 +7,7 @@ type FanoutExchange struct{}
 // Route returns all unique queue names from bindings.
 func (e *FanoutExchange) Route(
 	_ string,
+	_ map[string]interface{},
 	bindings []*Binding,
 ) []string {
 	var queues []string
