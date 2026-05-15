@@ -95,6 +95,17 @@ func (m *QueueManager) Count() int {
 	return len(m.queues)
 }
 
+// List returns a snapshot of all queues.
+func (m *QueueManager) List() []*Queue {
+	m.mu.RLock()
+	out := make([]*Queue, 0, len(m.queues))
+	for _, q := range m.queues {
+		out = append(out, q)
+	}
+	m.mu.RUnlock()
+	return out
+}
+
 // RemoveExclusive deletes all queues owned by the given connection.
 func (m *QueueManager) RemoveExclusive(conn *Connection) {
 	m.mu.Lock()
