@@ -52,6 +52,9 @@ make test
 | Basic.Return (mandatory publish) | ✅ |
 | Publisher Confirm (Confirm.Select + Basic.Ack/Nack) | ✅ |
 | Transaction support (Tx.Select / Tx.Commit / Tx.Rollback) | ✅ |
+| Dead letter exchange (DLX) | ✅ |
+| Message TTL (per-message & per-queue) | ✅ |
+| Priority queues | ✅ |
 | Message in-memory store | ✅ |
 | Routing & delivery | ✅ |
 | etcd persistence (Store interface + memory backend) | ✅ |

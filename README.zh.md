@@ -52,6 +52,9 @@ make test
 | Basic.Return（强制投递） | ✅ |
 | 发布者确认（Confirm.Select + Basic.Ack/Nack） | ✅ |
 | 事务支持（Tx.Select / Tx.Commit / Tx.Rollback） | ✅ |
+| 死信交换机（DLX） | ✅ |
+| 消息 TTL（单消息与队列级） | ✅ |
+| 优先级队列 | ✅ |
 | 消息内存存储 | ✅ |
 | 路由与投递 | ✅ |
 | etcd 持久化（Store 接口 + 内存后端） | ✅ |

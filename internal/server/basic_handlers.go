@@ -389,7 +389,7 @@ func handleGet(srv *Server) MethodHandler {
 		noAck := bits&0x01 != 0
 		_ = bits&0x02 != 0 // no-wait not used for get
 
-		pc := NewPullConsumer(srv.MessageStore(), srv.DeliveryTracker())
+		pc := NewPullConsumerWithQueueManager(srv.MessageStore(), srv.DeliveryTracker(), srv.QueueManager())
 		msg, ok := pc.Get(queue, noAck, ch.ID())
 		if !ok {
 			// send Basic.GetEmpty when no message available
@@ -453,7 +453,15 @@ func handleNack(srv *Server) MethodHandler {
 		}
 		requeue := bits&0x01 != 0
 
+		d := srv.DeliveryTracker().GetDelivery(tag, ch.ID())
 		_ = srv.DeliveryTracker().Nack(tag, ch.ID(), requeue)
+
+		// Route to dead-letter exchange on negative ack without requeue.
+		if !requeue && d != nil {
+			if q, ok := srv.QueueManager().Get(d.QueueName()); ok {
+				srv.Publisher().DeadLetter(d.Message(), q.Args)
+			}
+		}
 		return nil
 	}
 }
@@ -474,7 +482,15 @@ func handleReject(srv *Server) MethodHandler {
 		}
 		requeue := bits&0x01 != 0
 
+		d := srv.DeliveryTracker().GetDelivery(tag, ch.ID())
 		_ = srv.DeliveryTracker().Reject(tag, ch.ID(), requeue)
+
+		// Route to dead-letter exchange on reject without requeue.
+		if !requeue && d != nil {
+			if q, ok := srv.QueueManager().Get(d.QueueName()); ok {
+				srv.Publisher().DeadLetter(d.Message(), q.Args)
+			}
+		}
 		return nil
 	}
 }

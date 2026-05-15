@@ -115,6 +115,21 @@ func (t *DeliveryTracker) RecoverAll(
 	return count
 }
 
+// GetDelivery returns a single tracked delivery by tag and channel.
+func (t *DeliveryTracker) GetDelivery(
+	deliveryTag uint64,
+	channelID uint16,
+) *TrackedDelivery {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	chMap := t.byChannel[channelID]
+	if chMap == nil {
+		return nil
+	}
+	return chMap[deliveryTag]
+}
+
+// GetUnacked returns all tracked deliveries for a channel.
 func (t *DeliveryTracker) GetUnacked(
 	channelID uint16,
 ) []*TrackedDelivery {
