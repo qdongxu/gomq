@@ -51,6 +51,7 @@ make test
 | Channel.Flow (client-to-server) | ✅ |
 | Basic.Return (mandatory publish) | ✅ |
 | Publisher Confirm (Confirm.Select + Basic.Ack/Nack) | ✅ |
+| Transaction support (Tx.Select / Tx.Commit / Tx.Rollback) | ✅ |
 | Message in-memory store | ✅ |
 | Routing & delivery | ✅ |
 | etcd persistence | WIP |
