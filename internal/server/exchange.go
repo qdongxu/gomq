@@ -53,6 +53,8 @@ func (e *Exchange) Router() Router {
 		return &DirectExchange{}
 	case ExchangeFanout:
 		return &FanoutExchange{}
+	case ExchangeTopic:
+		return &TopicExchange{}
 	}
 	return nil
 }
