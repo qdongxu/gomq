@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"sync"
+
+	"github.com/qdongxu/gomq/internal/store"
 )
 
 // Server holds all broker state and manages the TCP listener.
@@ -27,9 +29,15 @@ type Server struct {
 
 // NewServer creates a broker with all managers initialised.
 func NewServer() *Server {
-	ex := NewExchangeManager()
-	qm := NewQueueManager()
-	bm := NewBindingManager()
+	return NewServerWithStore(nil)
+}
+
+// NewServerWithStore creates a broker with an optional metadata
+// store for persistence.
+func NewServerWithStore(metaStore store.Store) *Server {
+	ex := NewExchangeManagerWithStore(metaStore)
+	qm := NewQueueManagerWithStore(metaStore)
+	bm := NewBindingManagerWithStore(metaStore)
 	store := NewMessageStore()
 	cm := NewConsumerManager()
 	tracker := NewDeliveryTracker(store)

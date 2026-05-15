@@ -2,20 +2,31 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"sync"
+
+	"github.com/qdongxu/gomq/internal/store"
 )
 
 // ExchangeManager tracks all exchanges for a single vhost.
 type ExchangeManager struct {
 	exchanges map[string]*Exchange
+	metaStore store.Store
 	mu        sync.RWMutex
 }
 
 // NewExchangeManager creates a manager with default exchanges.
 func NewExchangeManager() *ExchangeManager {
+	return NewExchangeManagerWithStore(nil)
+}
+
+// NewExchangeManagerWithStore creates a manager with an optional
+// backing store.
+func NewExchangeManagerWithStore(metaStore store.Store) *ExchangeManager {
 	m := &ExchangeManager{
 		exchanges: make(map[string]*Exchange),
+		metaStore: metaStore,
 	}
 	m.initDefaults()
 	return m
@@ -43,6 +54,17 @@ func (m *ExchangeManager) Declare(
 
 	ex := NewExchange(name, exType, durable, autoDelete, internal, args)
 	m.exchanges[name] = ex
+
+	if m.metaStore != nil {
+		_ = m.metaStore.SaveExchange(context.Background(), store.ExchangeMeta{
+			Name:       name,
+			Type:       string(exType),
+			Durable:    durable,
+			AutoDelete: autoDelete,
+			Internal:   internal,
+			Args:       args,
+		})
+	}
 	return ex, nil
 }
 
@@ -54,6 +76,10 @@ func (m *ExchangeManager) Delete(name string) error {
 		return fmt.Errorf("exchange %q not found", name)
 	}
 	delete(m.exchanges, name)
+
+	if m.metaStore != nil {
+		_ = m.metaStore.DeleteExchange(context.Background(), name)
+	}
 	return nil
 }
 
