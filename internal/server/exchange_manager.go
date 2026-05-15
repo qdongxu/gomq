@@ -98,6 +98,17 @@ func (m *ExchangeManager) Count() int {
 	return len(m.exchanges)
 }
 
+// List returns a snapshot of all exchanges.
+func (m *ExchangeManager) List() []*Exchange {
+	m.mu.RLock()
+	out := make([]*Exchange, 0, len(m.exchanges))
+	for _, ex := range m.exchanges {
+		out = append(out, ex)
+	}
+	m.mu.RUnlock()
+	return out
+}
+
 // initDefaults creates the built-in exchanges required by AMQP.
 func (m *ExchangeManager) initDefaults() {
 	m.exchanges[""] = NewExchange("", ExchangeDirect, true, false, false, nil)

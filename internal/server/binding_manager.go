@@ -118,6 +118,23 @@ func (m *BindingManager) GetBindingsForQueue(
 	return out
 }
 
+// ListAll returns every binding in the manager.
+func (m *BindingManager) ListAll() []*Binding {
+	m.mu.RLock()
+	out := make([]*Binding, 0)
+	seen := make(map[*Binding]bool)
+	for _, list := range m.byExchange {
+		for _, b := range list {
+			if !seen[b] {
+				out = append(out, b)
+				seen[b] = true
+			}
+		}
+	}
+	m.mu.RUnlock()
+	return out
+}
+
 // UnbindAllForExchange removes every binding referencing the exchange.
 func (m *BindingManager) UnbindAllForExchange(exchange string) {
 	m.mu.Lock()
