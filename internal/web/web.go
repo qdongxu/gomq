@@ -2,10 +2,14 @@
 package web
 
 import (
+	_ "embed"
 	"encoding/json"
 	"html/template"
 	"net/http"
 )
+
+//go:embed templates/index.html
+var indexHTML string
 
 // Server wraps HTTP handlers for the management UI.
 type Server struct {
@@ -21,6 +25,7 @@ func NewServer() *Server {
 
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/", s.handleIndex)
+	s.mux.HandleFunc("/api/overview", s.handleOverview)
 	s.mux.HandleFunc("/api/exchanges", s.handleExchanges)
 	s.mux.HandleFunc("/api/queues", s.handleQueues)
 	s.mux.HandleFunc("/api/bindings", s.handleBindings)
@@ -34,10 +39,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // ConnectionInfo holds connection data for the UI.
 type ConnectionInfo struct {
-	RemoteAddr      string `json:"remote_addr"`
-	State           string `json:"state"`
-	Channels        int    `json:"channels"`
-	Heartbeat       int    `json:"heartbeat"`
+	RemoteAddr string `json:"remote_addr"`
+	State      string `json:"state"`
+	Channels   int    `json:"channels"`
+	Heartbeat  int    `json:"heartbeat"`
 }
 
 // Broker is the subset of broker state exposed to the web UI.
@@ -56,10 +61,10 @@ type ExchangeInfo struct {
 
 // QueueInfo holds queue data for the UI.
 type QueueInfo struct {
-	Name       string `json:"name"`
-	Durable    bool   `json:"durable"`
-	Messages   int    `json:"messages"`
-	Consumers  int    `json:"consumers"`
+	Name      string `json:"name"`
+	Durable   bool   `json:"durable"`
+	Messages  int    `json:"messages"`
+	Consumers int    `json:"consumers"`
 }
 
 // BindingInfo holds binding data for the UI.
@@ -122,48 +127,4 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-var indexTemplate = template.Must(template.New("index").Parse(`<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="UTF-8">
-	<title>gomq management</title>
-	<script src="https://unpkg.com/htmx.org@1.9.12"></script>
-	<style>
-		body { font-family: system-ui, sans-serif; margin: 2rem; }
-		h1 { font-size: 1.5rem; }
-		h2 { font-size: 1.2rem; margin-top: 1.5rem; }
-		table { border-collapse: collapse; width: 100%; margin-top: .5rem; }
-		th, td { border: 1px solid #ddd; padding: .5rem; text-align: left; }
-		th { background: #f5f5f5; }
-		tr:nth-child(even) { background: #fafafa; }
-	</style>
-</head>
-<body>
-	<h1>🔧 gomq management</h1>
-
-	<h2>Connections</h2>
-	<table hx-get="/api/connections" hx-trigger="load" hx-target="#connections">
-		<thead><tr><th>Remote Address</th><th>State</th><th>Channels</th><th>Heartbeat</th></tr></thead>
-		<tbody id="connections"><td colspan="4">Loading…</td></tbody>
-	</table>
-
-	<h2>Exchanges</h2>
-	<table hx-get="/api/exchanges" hx-trigger="load" hx-target="#exchanges">
-		<thead><tr><th>Name</th><th>Type</th></tr></thead>
-		<tbody id="exchanges"><td colspan="2">Loading…</td></tbody>
-	</table>
-
-	<h2>Queues</h2>
-	<table hx-get="/api/queues" hx-trigger="load" hx-target="#queues">
-		<thead><tr><th>Name</th><th>Durable</th><th>Messages</th><th>Consumers</th></tr></thead>
-		<tbody id="queues"><td colspan="4">Loading…</td></tbody>
-	</table>
-
-	<h2>Bindings</h2>
-	<table hx-get="/api/bindings" hx-trigger="load" hx-target="#bindings">
-		<thead><tr><th>Exchange</th><th>Queue</th><th>Routing Key</th></tr></thead>
-		<tbody id="bindings"><td colspan="3">Loading…</td></tbody>
-	</table>
-</body>
-</html>
-`))
+var indexTemplate = template.Must(template.New("index").Parse(indexHTML))
