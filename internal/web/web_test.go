@@ -13,12 +13,14 @@ type mockBroker struct {
 	queues      []QueueInfo
 	bindings    []BindingInfo
 	connections []ConnectionInfo
+	overview    OverviewInfo
 }
 
-func (m *mockBroker) ExchangeList() []ExchangeInfo   { return m.exchanges }
+func (m *mockBroker) ExchangeList() []ExchangeInfo     { return m.exchanges }
 func (m *mockBroker) QueueList() []QueueInfo           { return m.queues }
-func (m *mockBroker) BindingList() []BindingInfo       { return m.bindings }
-func (m *mockBroker) ConnectionList() []ConnectionInfo { return m.connections }
+func (m *mockBroker) BindingList() []BindingInfo         { return m.bindings }
+func (m *mockBroker) ConnectionList() []ConnectionInfo   { return m.connections }
+func (m *mockBroker) Overview() OverviewInfo             { return m.overview }
 
 func TestHandleIndex(t *testing.T) {
 	srv := NewServer()
@@ -41,6 +43,9 @@ func TestHandleIndex(t *testing.T) {
 	}
 	if !contains(body, "Connections") {
 		t.Fatal("missing Connections section in index response")
+	}
+	if !contains(body, "Overview") {
+		t.Fatal("missing Overview section in index response")
 	}
 }
 
@@ -136,6 +141,37 @@ func TestHandleConnections(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	if len(out) != 1 || out[0].RemoteAddr != "127.0.0.1:12345" {
+		t.Fatalf("unexpected response: %+v", out)
+	}
+}
+
+func TestHandleOverview(t *testing.T) {
+	SetOverviewBroker(&mockBroker{
+		overview: OverviewInfo{
+			Connections: 3,
+			Channels:    7,
+			Exchanges:   5,
+			Queues:      2,
+			Consumers:   1,
+			Messages:    42,
+		},
+	})
+	defer SetOverviewBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET", "/api/overview", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var out OverviewInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.Connections != 3 || out.Messages != 42 {
 		t.Fatalf("unexpected response: %+v", out)
 	}
 }
