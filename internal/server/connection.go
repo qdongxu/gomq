@@ -221,6 +221,29 @@ func (c *Connection) handleChannelFrame(
 	return c.dispatcher.Dispatch(ch, f)
 }
 
+// RemoteAddr returns the underlying net.Conn remote address.
+func (c *Connection) RemoteAddr() string {
+	if c.raw == nil {
+		return ""
+	}
+	return c.raw.RemoteAddr().String()
+}
+
+// ChannelCount returns the number of open channels.
+func (c *Connection) ChannelCount() int {
+	if c.channelMgr == nil {
+		return 0
+	}
+	return c.channelMgr.Count()
+}
+
+// HeartbeatInterval returns the negotiated heartbeat interval.
+func (c *Connection) HeartbeatInterval() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.heartbeat
+}
+
 // registerConnectionMethods registers handlers for Connection class.
 func (c *Connection) registerConnectionMethods() {
 	// Connection.Close is handled inline in handleConnectionFrame.
