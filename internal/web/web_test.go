@@ -9,14 +9,16 @@ import (
 )
 
 type mockBroker struct {
-	exchanges []ExchangeInfo
-	queues    []QueueInfo
-	bindings  []BindingInfo
+	exchanges   []ExchangeInfo
+	queues      []QueueInfo
+	bindings    []BindingInfo
+	connections []ConnectionInfo
 }
 
-func (m *mockBroker) ExchangeList() []ExchangeInfo { return m.exchanges }
-func (m *mockBroker) QueueList() []QueueInfo       { return m.queues }
-func (m *mockBroker) BindingList() []BindingInfo   { return m.bindings }
+func (m *mockBroker) ExchangeList() []ExchangeInfo   { return m.exchanges }
+func (m *mockBroker) QueueList() []QueueInfo           { return m.queues }
+func (m *mockBroker) BindingList() []BindingInfo       { return m.bindings }
+func (m *mockBroker) ConnectionList() []ConnectionInfo { return m.connections }
 
 func TestHandleIndex(t *testing.T) {
 	srv := NewServer()
@@ -36,6 +38,9 @@ func TestHandleIndex(t *testing.T) {
 	}
 	if !contains(body, "htmx.org") {
 		t.Fatal("missing htmx script in index response")
+	}
+	if !contains(body, "Connections") {
+		t.Fatal("missing Connections section in index response")
 	}
 }
 
@@ -105,6 +110,32 @@ func TestHandleBindings(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	if len(out) != 1 || out[0].RoutingKey != "rk" {
+		t.Fatalf("unexpected response: %+v", out)
+	}
+}
+
+func TestHandleConnections(t *testing.T) {
+	SetBroker(&mockBroker{
+		connections: []ConnectionInfo{
+			{RemoteAddr: "127.0.0.1:12345", State: "open", Channels: 2, Heartbeat: 60},
+		},
+	})
+	defer SetBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET", "/api/connections", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var out []ConnectionInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 1 || out[0].RemoteAddr != "127.0.0.1:12345" {
 		t.Fatalf("unexpected response: %+v", out)
 	}
 }

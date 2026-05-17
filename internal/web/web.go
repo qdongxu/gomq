@@ -24,6 +24,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/exchanges", s.handleExchanges)
 	s.mux.HandleFunc("/api/queues", s.handleQueues)
 	s.mux.HandleFunc("/api/bindings", s.handleBindings)
+	s.mux.HandleFunc("/api/connections", s.handleConnections)
 }
 
 // ServeHTTP implements http.Handler.
@@ -31,11 +32,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
+// ConnectionInfo holds connection data for the UI.
+type ConnectionInfo struct {
+	RemoteAddr      string `json:"remote_addr"`
+	State           string `json:"state"`
+	Channels        int    `json:"channels"`
+	Heartbeat       int    `json:"heartbeat"`
+}
+
 // Broker is the subset of broker state exposed to the web UI.
 type Broker interface {
 	ExchangeList() []ExchangeInfo
 	QueueList() []QueueInfo
 	BindingList() []BindingInfo
+	ConnectionList() []ConnectionInfo
 }
 
 // ExchangeInfo holds exchange data for the UI.
@@ -99,6 +109,14 @@ func (s *Server) handleBindings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, broker.BindingList())
 }
 
+func (s *Server) handleConnections(w http.ResponseWriter, r *http.Request) {
+	if broker == nil {
+		writeJSON(w, []ConnectionInfo{})
+		return
+	}
+	writeJSON(w, broker.ConnectionList())
+}
+
 func writeJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
@@ -122,6 +140,12 @@ var indexTemplate = template.Must(template.New("index").Parse(`<!DOCTYPE html>
 </head>
 <body>
 	<h1>🔧 gomq management</h1>
+
+	<h2>Connections</h2>
+	<table hx-get="/api/connections" hx-trigger="load" hx-target="#connections">
+		<thead><tr><th>Remote Address</th><th>State</th><th>Channels</th><th>Heartbeat</th></tr></thead>
+		<tbody id="connections"><td colspan="4">Loading…</td></tbody>
+	</table>
 
 	<h2>Exchanges</h2>
 	<table hx-get="/api/exchanges" hx-trigger="load" hx-target="#exchanges">

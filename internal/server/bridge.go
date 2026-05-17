@@ -56,3 +56,35 @@ func (wb *WebBroker) BindingList() []web.BindingInfo {
 	}
 	return out
 }
+
+// ConnectionList returns all active connections for the UI.
+func (wb *WebBroker) ConnectionList() []web.ConnectionInfo {
+	conns := wb.srv.ConnectionList()
+	out := make([]web.ConnectionInfo, 0, len(conns))
+	for _, c := range conns {
+		stateStr := "unknown"
+		switch c.State() {
+		case StateInit:
+			stateStr = "init"
+		case StateHeader:
+			stateStr = "header"
+		case StateStart:
+			stateStr = "start"
+		case StateTune:
+			stateStr = "tune"
+		case StateOpen:
+			stateStr = "open"
+		case StateClosing:
+			stateStr = "closing"
+		case StateClosed:
+			stateStr = "closed"
+		}
+		out = append(out, web.ConnectionInfo{
+			RemoteAddr: c.RemoteAddr(),
+			State:      stateStr,
+			Channels:   c.ChannelCount(),
+			Heartbeat:  c.HeartbeatInterval(),
+		})
+	}
+	return out
+}

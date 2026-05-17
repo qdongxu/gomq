@@ -27,6 +27,7 @@ type Server struct {
 	mu          sync.RWMutex
 	wg          sync.WaitGroup
 	closed      bool
+	connMap     map[*Connection]struct{} // active connections
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -61,6 +62,7 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		prefetch:  prefetch,
 		flowCtrl:  flowCtrl,
 		metaStore: metaStore,
+		connMap:   make(map[*Connection]struct{}),
 	}
 }
 
@@ -156,7 +158,35 @@ func (s *Server) handleConn(raw net.Conn) {
 	defer s.wg.Done()
 	auth := NewMemoryAuthenticator()
 	c := NewConnection(raw, auth, s)
+	s.registerConn(c)
+	defer s.unregisterConn(c)
 	c.Serve()
+}
+
+func (s *Server) registerConn(c *Connection) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.connMap == nil {
+		s.connMap = make(map[*Connection]struct{})
+	}
+	s.connMap[c] = struct{}{}
+}
+
+func (s *Server) unregisterConn(c *Connection) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.connMap, c)
+}
+
+// ConnectionList returns a snapshot of active connections.
+func (s *Server) ConnectionList() []*Connection {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]*Connection, 0, len(s.connMap))
+	for c := range s.connMap {
+		out = append(out, c)
+	}
+	return out
 }
 
 // Shutdown closes the listener and waits for connections to finish.
