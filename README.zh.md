@@ -64,7 +64,9 @@ make test
 | Web 管理端 — Overview 页面 | ✅ |
 | Web 管理端 — Connections 页面 | ✅ |
 | Web 管理端 — Channels 页面 | ✅ |
-| Web 管理端 — Queues / Exchanges / Bindings 页面 | ✅ |
+| Web 管理端 — Exchanges 页面 | ✅ |
+| Web 管理端 — Queues 页面 | ✅ |
+| Web 管理端 — Bindings 页面 | ✅ |
 | 集群 | ✅ |
 
 开发中 — 文档和功能随代码实现持续更新。

@@ -20,9 +20,15 @@ func (wb *WebBroker) ExchangeList() []web.ExchangeInfo {
 	exs := wb.srv.ExchangeManager().List()
 	out := make([]web.ExchangeInfo, 0, len(exs))
 	for _, ex := range exs {
+		inCnt, outCnt := wb.srv.Publisher().ExchangeStats(ex.Name)
+		bindings := wb.srv.BindingManager().GetBindings(ex.Name)
 		out = append(out, web.ExchangeInfo{
-			Name: ex.Name,
-			Type: string(ex.Type),
+			Name:        ex.Name,
+			Type:        string(ex.Type),
+			Durable:     ex.Durable,
+			Bindings:    len(bindings),
+			MessagesIn:  inCnt,
+			MessagesOut: outCnt,
 		})
 	}
 	return out
