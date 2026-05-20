@@ -89,6 +89,19 @@ func (m *ConsumerManager) GetConsumer(tag string) (*Consumer, bool) {
 	return c, ok
 }
 
+// CountByChannel returns the number of consumers on the given channel.
+func (m *ConsumerManager) CountByChannel(ch *Channel) int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	count := 0
+	for _, c := range m.byTag {
+		if c.channel == ch {
+			count++
+		}
+	}
+	return count
+}
+
 // Count returns the total number of consumers.
 func (m *ConsumerManager) Count() int {
 	m.mu.RLock()

@@ -88,3 +88,66 @@ func (wb *WebBroker) ConnectionList() []web.ConnectionInfo {
 	}
 	return out
 }
+
+// ChannelList returns all active channels for the UI.
+func (wb *WebBroker) ChannelList() []web.ChannelInfo {
+	conns := wb.srv.ConnectionList()
+	out := make([]web.ChannelInfo, 0)
+	for _, c := range conns {
+		if c.channelMgr == nil {
+			continue
+		}
+		c.channelMgr.mu.RLock()
+		chs := make([]*Channel, 0, len(c.channelMgr.channels))
+		for _, ch := range c.channelMgr.channels {
+			chs = append(chs, ch)
+		}
+		c.channelMgr.mu.RUnlock()
+
+		for _, ch := range chs {
+			stateStr := "unknown"
+			switch ch.State() {
+			case ChanOpening:
+				stateStr = "opening"
+			case ChanOpen:
+				stateStr = "open"
+			case ChanFlow:
+				stateStr = "flow"
+			case ChanClosing:
+				stateStr = "closing"
+			case ChanClosed:
+				stateStr = "closed"
+			}
+
+			unacked := len(
+				wb.srv.DeliveryTracker().GetUnacked(ch.ID()),
+			)
+			consumers := wb.srv.ConsumerManager().
+				CountByChannel(ch)
+
+			pref := ch.prefetch
+			prefLimit := 0
+			if pref != nil {
+				l := pref.LimitFor(ch.ID())
+				if l != nil {
+					prefLimit = int(l.count)
+				}
+			}
+			prefCount := 0
+			if pref != nil {
+				prefCount = int(pref.Current(ch.ID()))
+			}
+
+			out = append(out, web.ChannelInfo{
+				ID:            ch.ID(),
+				Connection:    c.RemoteAddr(),
+				State:         stateStr,
+				Consumers:     consumers,
+				Unacked:       unacked,
+				PrefetchCount: prefCount,
+				PrefetchLimit: prefLimit,
+			})
+		}
+	}
+	return out
+}

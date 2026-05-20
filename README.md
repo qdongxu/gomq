@@ -63,7 +63,8 @@ make test
 | Web management UI (htmx framework) | ✅ |
 | Web management UI — Overview page | ✅ |
 | Web management UI — Connections page | ✅ |
-| Web management UI — Channels / Queues / Exchanges page | ✅ |
+| Web management UI — Channels page | ✅ |
+| Web management UI — Queues / Exchanges / Bindings page | ✅ |
 | Clustering | ✅ |
 
 WIP — documentation and features will be updated as code evolves.
