@@ -60,7 +60,11 @@ make test
 | etcd 持久化（Store 接口 + 内存后端） | ✅ |
 | etcd 持久化（etcd 后端） | 开发中 |
 | 启动时加载持久化状态 | ✅ |
-| Web 管理端（htmx） | ✅ |
+| Web 管理端（htmx 框架） | ✅ |
+| Web 管理端 — Overview 页面 | ✅ |
+| Web 管理端 — Connections 页面 | ✅ |
+| Web 管理端 — Channels 页面 | ✅ |
+| Web 管理端 — Queues / Exchanges / Bindings 页面 | ✅ |
 | 集群 | ✅ |
 
 开发中 — 文档和功能随代码实现持续更新。

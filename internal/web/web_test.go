@@ -13,6 +13,7 @@ type mockBroker struct {
 	queues      []QueueInfo
 	bindings    []BindingInfo
 	connections []ConnectionInfo
+	channels    []ChannelInfo
 	overview    OverviewInfo
 }
 
@@ -20,6 +21,7 @@ func (m *mockBroker) ExchangeList() []ExchangeInfo     { return m.exchanges }
 func (m *mockBroker) QueueList() []QueueInfo           { return m.queues }
 func (m *mockBroker) BindingList() []BindingInfo         { return m.bindings }
 func (m *mockBroker) ConnectionList() []ConnectionInfo   { return m.connections }
+func (m *mockBroker) ChannelList() []ChannelInfo       { return m.channels }
 func (m *mockBroker) Overview() OverviewInfo             { return m.overview }
 
 func TestHandleIndex(t *testing.T) {
@@ -122,7 +124,8 @@ func TestHandleBindings(t *testing.T) {
 func TestHandleConnections(t *testing.T) {
 	SetBroker(&mockBroker{
 		connections: []ConnectionInfo{
-			{RemoteAddr: "127.0.0.1:12345", State: "open", Channels: 2, Heartbeat: 60},
+			{RemoteAddr: "127.0.0.1:12345", State: "open",
+				Channels: 2, Heartbeat: 60},
 		},
 	})
 	defer SetBroker(nil)
@@ -141,6 +144,65 @@ func TestHandleConnections(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	if len(out) != 1 || out[0].RemoteAddr != "127.0.0.1:12345" {
+		t.Fatalf("unexpected response: %+v", out)
+	}
+}
+
+func TestHandleChannels(t *testing.T) {
+	SetChannelsBroker(&mockBroker{
+		channels: []ChannelInfo{
+			{ID: 1, Connection: "127.0.0.1:12345",
+				State: "open", Consumers: 2, Unacked: 5,
+				PrefetchCount: 3, PrefetchLimit: 10},
+			{ID: 2, Connection: "127.0.0.1:12346",
+				State: "open", Consumers: 0, Unacked: 0,
+				PrefetchCount: 0, PrefetchLimit: 0},
+		},
+	})
+	defer SetChannelsBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET", "/api/channels", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var out []ChannelInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 2 || out[0].ID != 1 {
+		t.Fatalf("unexpected response: %+v", out)
+	}
+}
+
+func TestHandleChannelsFilter(t *testing.T) {
+	SetChannelsBroker(&mockBroker{
+		channels: []ChannelInfo{
+			{ID: 1, Connection: "127.0.0.1:12345",
+				State: "open", Consumers: 2, Unacked: 5,
+				PrefetchCount: 3, PrefetchLimit: 10},
+			{ID: 2, Connection: "127.0.0.1:12346",
+				State: "open", Consumers: 0, Unacked: 0,
+				PrefetchCount: 0, PrefetchLimit: 0},
+		},
+	})
+	defer SetChannelsBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET",
+		"/api/channels?connection=127.0.0.1:12345", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	var out []ChannelInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 1 || out[0].Connection != "127.0.0.1:12345" {
 		t.Fatalf("unexpected response: %+v", out)
 	}
 }
@@ -177,7 +239,8 @@ func TestHandleOverview(t *testing.T) {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr))
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 &&
+		containsAt(s, substr))
 }
 
 func containsAt(s, substr string) bool {

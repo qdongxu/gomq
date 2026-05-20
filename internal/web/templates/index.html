@@ -16,6 +16,8 @@
 		th, td { border: 1px solid #ddd; padding: .5rem; text-align: left; }
 		th { background: #f5f5f5; }
 		tr:nth-child(even) { background: #fafafa; }
+		.filter { margin: .5rem 0; }
+		.filter input { padding: .25rem .5rem; border: 1px solid #ccc; border-radius: .25rem; }
 	</style>
 </head>
 <body>
@@ -35,6 +37,17 @@
 	<table hx-get="/api/connections" hx-trigger="load" hx-target="#connections">
 		<thead><tr><th>Remote Address</th><th>State</th><th>Channels</th><th>Heartbeat</th></tr></thead>
 		<tbody id="connections"><td colspan="4">Loading…</td></tbody>
+	</table>
+
+	<h2>Channels</h2>
+	<div class="filter">
+		<input type="text" id="conn-filter" placeholder="Filter by connection…"
+			hx-get="/api/channels" hx-trigger="keyup changed delay:300ms"
+			hx-target="#channels" hx-vals='js:{connection: document.getElementById("conn-filter").value}'>
+	</div>
+	<table hx-get="/api/channels" hx-trigger="load" hx-target="#channels">
+		<thead><tr><th>ID</th><th>Connection</th><th>State</th><th>Consumers</th><th>Unacked</th><th>Prefetch</th></tr></thead>
+		<tbody id="channels"><td colspan="6">Loading…</td></tbody>
 	</table>
 
 	<h2>Exchanges</h2>

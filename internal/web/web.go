@@ -30,6 +30,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/queues", s.handleQueues)
 	s.mux.HandleFunc("/api/bindings", s.handleBindings)
 	s.mux.HandleFunc("/api/connections", s.handleConnections)
+	s.mux.HandleFunc("/api/channels", s.handleChannels)
 }
 
 // ServeHTTP implements http.Handler.
@@ -51,6 +52,7 @@ type Broker interface {
 	QueueList() []QueueInfo
 	BindingList() []BindingInfo
 	ConnectionList() []ConnectionInfo
+	ChannelList() []ChannelInfo
 }
 
 // ExchangeInfo holds exchange data for the UI.

@@ -75,6 +75,11 @@ func (p *Prefetch) SetChannelPrefetch(
 }
 
 // limitFor returns the effective limit for a channel.
+func (p *Prefetch) LimitFor(channelID uint16) *prefetchLimit {
+	return p.limitFor(channelID)
+}
+
+// limitFor returns the effective limit for a channel.
 func (p *Prefetch) limitFor(channelID uint16) *prefetchLimit {
 	if p.globalLimit != nil {
 		return p.globalLimit
