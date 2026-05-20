@@ -57,8 +57,12 @@ type Broker interface {
 
 // ExchangeInfo holds exchange data for the UI.
 type ExchangeInfo struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Durable     bool   `json:"durable"`
+	Bindings    int    `json:"bindings"`
+	MessagesIn  int64  `json:"messages_in"`
+	MessagesOut int64  `json:"messages_out"`
 }
 
 // QueueInfo holds queue data for the UI.
@@ -90,14 +94,6 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = indexTemplate.Execute(w, nil)
-}
-
-func (s *Server) handleExchanges(w http.ResponseWriter, r *http.Request) {
-	if broker == nil {
-		writeJSON(w, []ExchangeInfo{})
-		return
-	}
-	writeJSON(w, broker.ExchangeList())
 }
 
 func (s *Server) handleQueues(w http.ResponseWriter, r *http.Request) {

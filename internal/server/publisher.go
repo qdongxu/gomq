@@ -3,6 +3,7 @@ package server
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -15,6 +16,14 @@ type Publisher struct {
 	consumers   *ConsumerManager
 	deliverer   *Deliverer
 	tracker     *DeliveryTracker
+	stats       map[string]*exchangeStats
+	statsMu     sync.RWMutex
+}
+
+// exchangeStats holds per-exchange message counters.
+type exchangeStats struct {
+	in  int64
+	out int64
 }
 
 // NewPublisher creates a publisher with all required managers.
@@ -35,6 +44,7 @@ func NewPublisher(
 		consumers: cm,
 		deliverer: d,
 		tracker:   tracker,
+		stats:     make(map[string]*exchangeStats),
 	}
 }
 
@@ -45,7 +55,11 @@ func (p *Publisher) Publish(
 	msg *Message,
 	channelID uint16,
 ) (int, error) {
-	return p.publishInternal(exchangeName, routingKey, msg, channelID, true)
+	n, err := p.publishInternal(exchangeName, routingKey, msg, channelID, true)
+	if n >= 0 && err == nil {
+		p.recordStats(exchangeName, int64(n))
+	}
+	return n, err
 }
 
 // publishInternal performs routing with optional DLX/max-length checks.
@@ -97,6 +111,28 @@ func (p *Publisher) publishInternal(
 		_ = p.deliverer.Deliver(msg, qn, channelID)
 	}
 	return len(queues), nil
+}
+
+// ExchangeStats returns the accumulated in/out counters for an exchange.
+func (p *Publisher) ExchangeStats(name string) (in, out int64) {
+	p.statsMu.RLock()
+	defer p.statsMu.RUnlock()
+	if s, ok := p.stats[name]; ok {
+		return s.in, s.out
+	}
+	return 0, 0
+}
+
+func (p *Publisher) recordStats(name string, routed int64) {
+	p.statsMu.Lock()
+	defer p.statsMu.Unlock()
+	s, ok := p.stats[name]
+	if !ok {
+		s = &exchangeStats{}
+		p.stats[name] = s
+	}
+	s.in++
+	s.out += routed
 }
 
 // DeadLetter routes a rejected or expired message to the configured

@@ -52,12 +52,17 @@ func TestHandleIndex(t *testing.T) {
 }
 
 func TestHandleExchanges(t *testing.T) {
-	SetBroker(&mockBroker{
+	SetExchangesBroker(&mockBroker{
 		exchanges: []ExchangeInfo{
-			{Name: "amq.direct", Type: "direct"},
+			{Name: "amq.direct", Type: "direct",
+				Durable: true, Bindings: 2,
+				MessagesIn: 10, MessagesOut: 15},
+			{Name: "amq.topic", Type: "topic",
+				Durable: true, Bindings: 0,
+				MessagesIn: 5, MessagesOut: 5},
 		},
 	})
-	defer SetBroker(nil)
+	defer SetExchangesBroker(nil)
 
 	srv := NewServer()
 	req := httptest.NewRequest("GET", "/api/exchanges", nil)
@@ -72,7 +77,39 @@ func TestHandleExchanges(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(out) != 1 || out[0].Name != "amq.direct" {
+	if len(out) != 2 {
+		t.Fatalf("unexpected len: %d", len(out))
+	}
+	if out[0].Name != "amq.direct" || out[0].Bindings != 2 {
+		t.Fatalf("unexpected response: %+v", out[0])
+	}
+	if out[1].MessagesIn != 5 || out[1].MessagesOut != 5 {
+		t.Fatalf("unexpected response: %+v", out[1])
+	}
+}
+
+func TestHandleExchangesFilter(t *testing.T) {
+	SetExchangesBroker(&mockBroker{
+		exchanges: []ExchangeInfo{
+			{Name: "amq.direct", Type: "direct",
+				Durable: true, Bindings: 2},
+			{Name: "amq.topic", Type: "topic",
+				Durable: true, Bindings: 0},
+		},
+	})
+	defer SetExchangesBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET",
+		"/api/exchanges?type=direct", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	var out []ExchangeInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 1 || out[0].Type != "direct" {
 		t.Fatalf("unexpected response: %+v", out)
 	}
 }
