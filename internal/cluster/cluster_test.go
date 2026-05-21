@@ -2,6 +2,7 @@
 package cluster
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ func TestNewCluster(t *testing.T) {
 		t.Fatalf("localID = %q, want n1", c.LocalID())
 	}
 	if c.LocalAddr() != "127.0.0.1:5672" {
-		t.Fatalf("localAddr = %q", c.LocalAddr())
+		t.Fatalf("localAddr = %q, want 127.0.0.1:5672", c.LocalAddr())
 	}
 	if !c.IsLeader() {
 		t.Fatal("new cluster should be leader")
@@ -68,5 +69,73 @@ func TestHeartbeat(t *testing.T) {
 
 	if !after.After(before) {
 		t.Fatal("heartbeat did not update LastSeen")
+	}
+}
+
+func TestMembershipJoinLeave(t *testing.T) {
+	m := NewMembership()
+	m.Join("n1", "127.0.0.1:5672")
+	m.Join("n2", "127.0.0.1:5673")
+
+	if m.OnlineCount() != 2 {
+		t.Fatalf("online = %d, want 2", m.OnlineCount())
+	}
+
+	mem, ok := m.Get("n1")
+	if !ok || mem.Status != StatusOnline {
+		t.Fatalf("n1 status = %v, want online", mem.Status)
+	}
+
+	m.Leave("n2")
+	mem, _ = m.Get("n2")
+	if mem.Status != StatusOffline {
+		t.Fatalf("n2 status = %v, want offline", mem.Status)
+	}
+}
+
+func TestMembershipSuspect(t *testing.T) {
+	m := NewMembership()
+	m.Join("n1", "127.0.0.1:5672")
+	m.Suspect("n1")
+
+	mem, _ := m.Get("n1")
+	if mem.Status != StatusSuspected {
+		t.Fatalf("status = %v, want suspected", mem.Status)
+	}
+}
+
+func TestStatusString(t *testing.T) {
+	if StatusOnline.String() != "online" {
+		t.Fatalf("online string = %q", StatusOnline.String())
+	}
+	if StatusSuspected.String() != "suspected" {
+		t.Fatalf("suspected string = %q", StatusSuspected.String())
+	}
+	if StatusOffline.String() != "offline" {
+		t.Fatalf("offline string = %q", StatusOffline.String())
+	}
+}
+
+func TestEventTypeConversion(t *testing.T) {
+	if eventType(0) != EventPut {
+		t.Fatal("put mismatch")
+	}
+	if eventType(1) != EventDelete {
+		t.Fatal("delete mismatch")
+	}
+}
+
+func TestNodeInfoMarshal(t *testing.T) {
+	info := NodeInfo{ID: "n1", Addr: "127.0.0.1:5672"}
+	data, err := json.Marshal(info)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var out NodeInfo
+	if err := json.Unmarshal(data, &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if out.ID != "n1" || out.Addr != "127.0.0.1:5672" {
+		t.Fatalf("unexpected: %+v", out)
 	}
 }
