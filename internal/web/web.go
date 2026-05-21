@@ -98,14 +98,6 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	_ = indexTemplate.Execute(w, nil)
 }
 
-func (s *Server) handleBindings(w http.ResponseWriter, r *http.Request) {
-	if broker == nil {
-		writeJSON(w, []BindingInfo{})
-		return
-	}
-	writeJSON(w, broker.BindingList())
-}
-
 func (s *Server) handleConnections(w http.ResponseWriter, r *http.Request) {
 	if broker == nil {
 		writeJSON(w, []ConnectionInfo{})

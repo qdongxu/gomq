@@ -172,12 +172,13 @@ func TestHandleQueuesFilter(t *testing.T) {
 }
 
 func TestHandleBindings(t *testing.T) {
-	SetBroker(&mockBroker{
+	SetBindingsBroker(&mockBroker{
 		bindings: []BindingInfo{
 			{Exchange: "ex1", Queue: "q1", RoutingKey: "rk"},
+			{Exchange: "ex2", Queue: "q2", RoutingKey: "rk2"},
 		},
 	})
-	defer SetBroker(nil)
+	defer SetBindingsBroker(nil)
 
 	srv := NewServer()
 	req := httptest.NewRequest("GET", "/api/bindings", nil)
@@ -188,7 +189,34 @@ func TestHandleBindings(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(out) != 1 || out[0].RoutingKey != "rk" {
+	if len(out) != 2 {
+		t.Fatalf("unexpected len: %d", len(out))
+	}
+	if out[0].RoutingKey != "rk" {
+		t.Fatalf("unexpected response: %+v", out[0])
+	}
+}
+
+func TestHandleBindingsFilter(t *testing.T) {
+	SetBindingsBroker(&mockBroker{
+		bindings: []BindingInfo{
+			{Exchange: "ex1", Queue: "q1", RoutingKey: "rk"},
+			{Exchange: "ex2", Queue: "q2", RoutingKey: "rk2"},
+		},
+	})
+	defer SetBindingsBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET",
+		"/api/bindings?exchange=ex1", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	var out []BindingInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 1 || out[0].Exchange != "ex1" {
 		t.Fatalf("unexpected response: %+v", out)
 	}
 }

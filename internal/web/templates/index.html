@@ -73,6 +73,11 @@
 	</table>
 
 	<h2>Bindings</h2>
+	<div class="filter">
+		<input type="text" id="bind-filter" placeholder="Filter by exchange…"
+			hx-get="/api/bindings" hx-trigger="keyup changed delay:300ms"
+			hx-target="#bindings" hx-vals='js:{exchange: document.getElementById("bind-filter").value}'>
+	</div>
 	<table hx-get="/api/bindings" hx-trigger="load" hx-target="#bindings">
 		<thead><tr><th>Exchange</th><th>Queue</th><th>Routing Key</th></tr></thead>
 		<tbody id="bindings"><td colspan="3">Loading…</td></tbody>
