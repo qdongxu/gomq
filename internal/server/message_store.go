@@ -63,6 +63,17 @@ func (s *MessageStore) Purge(queueName string) {
 	s.mu.Unlock()
 }
 
+// Bytes returns the total payload size (in bytes) for a queue.
+func (s *MessageStore) Bytes(queueName string) int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var n int64
+	for _, m := range s.queues[queueName] {
+		n += int64(len(m.payload))
+	}
+	return n
+}
+
 // EnqueuePriority inserts a message maintaining descending priority order.
 func (s *MessageStore) EnqueuePriority(queueName string, msg *Message) {
 	s.mu.Lock()
@@ -71,6 +82,8 @@ func (s *MessageStore) EnqueuePriority(queueName string, msg *Message) {
 		s.queues[queueName], msg,
 	)
 }
+
+// AllQueues returns the names of all queues that have messages.
 func (s *MessageStore) AllQueues() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

@@ -115,12 +115,15 @@ func TestHandleExchangesFilter(t *testing.T) {
 }
 
 func TestHandleQueues(t *testing.T) {
-	SetBroker(&mockBroker{
+	SetQueuesBroker(&mockBroker{
 		queues: []QueueInfo{
-			{Name: "q1", Durable: true, Messages: 3, Consumers: 0},
+			{Name: "q1", Durable: true, Messages: 3,
+				Consumers: 2, Bindings: 1, Memory: 256},
+			{Name: "q2", Durable: false, Messages: 0,
+				Consumers: 0, Bindings: 0, Memory: 0},
 		},
 	})
-	defer SetBroker(nil)
+	defer SetQueuesBroker(nil)
 
 	srv := NewServer()
 	req := httptest.NewRequest("GET", "/api/queues", nil)
@@ -131,7 +134,39 @@ func TestHandleQueues(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(out) != 1 || out[0].Messages != 3 {
+	if len(out) != 2 {
+		t.Fatalf("unexpected len: %d", len(out))
+	}
+	if out[0].Messages != 3 || out[0].Memory != 256 {
+		t.Fatalf("unexpected response: %+v", out[0])
+	}
+	if out[1].Durable {
+		t.Fatalf("unexpected durable: %+v", out[1])
+	}
+}
+
+func TestHandleQueuesFilter(t *testing.T) {
+	SetQueuesBroker(&mockBroker{
+		queues: []QueueInfo{
+			{Name: "q1", Durable: true, Messages: 3,
+				Consumers: 2, Bindings: 1, Memory: 256},
+			{Name: "q2", Durable: false, Messages: 0,
+				Consumers: 0, Bindings: 0, Memory: 0},
+		},
+	})
+	defer SetQueuesBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET",
+		"/api/queues?durable=true", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	var out []QueueInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 1 || !out[0].Durable {
 		t.Fatalf("unexpected response: %+v", out)
 	}
 }

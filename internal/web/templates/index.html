@@ -62,9 +62,14 @@
 	</table>
 
 	<h2>Queues</h2>
+	<div class="filter">
+		<input type="text" id="q-filter" placeholder="Filter by durable (true/false)…"
+			hx-get="/api/queues" hx-trigger="keyup changed delay:300ms"
+			hx-target="#queues" hx-vals='js:{durable: document.getElementById("q-filter").value}'>
+	</div>
 	<table hx-get="/api/queues" hx-trigger="load" hx-target="#queues">
-		<thead><tr><th>Name</th><th>Durable</th><th>Messages</th><th>Consumers</th></tr></thead>
-		<tbody id="queues"><td colspan="4">Loading…</td></tbody>
+		<thead><tr><th>Name</th><th>Durable</th><th>Messages</th><th>Consumers</th><th>Bindings</th><th>Memory</th></tr></thead>
+		<tbody id="queues"><td colspan="6">Loading…</td></tbody>
 	</table>
 
 	<h2>Bindings</h2>
