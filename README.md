@@ -67,6 +67,7 @@ make test
 | Web management UI — Exchanges page | ✅ |
 | Web management UI — Queues page | ✅ |
 | Web management UI — Bindings page | ✅ |
+| Web management UI — Admin page | ✅ |
 | Clustering | ✅ |
 
 WIP — documentation and features will be updated as code evolves.
