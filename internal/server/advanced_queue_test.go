@@ -173,7 +173,7 @@ func TestPublisher_MaxLengthOverflow_DeadLetter(t *testing.T) {
 	store := NewMessageStore()
 	cm := NewConsumerManager()
 	tracker := NewDeliveryTracker(store)
-	pub := NewPublisher(ex, qm, bm, store, cm, tracker)
+	pub := NewPublisher(ex, qm, bm, nil, store, cm, tracker)
 
 	// Create exchange.
 	_, _ = ex.Declare("ex", ExchangeDirect, false, false, false, nil)
@@ -266,7 +266,7 @@ func TestPublisher_PriorityEnqueue(t *testing.T) {
 	store := NewMessageStore()
 	cm := NewConsumerManager()
 	tracker := NewDeliveryTracker(store)
-	pub := NewPublisher(ex, qm, bm, store, cm, tracker)
+	pub := NewPublisher(ex, qm, bm, nil, store, cm, tracker)
 
 	_, _ = ex.Declare("ex", ExchangeDirect, false, false, false, nil)
 	_, _ = qm.Declare("priq", false, false, false,
@@ -300,7 +300,7 @@ func TestReject_DeadLetters(t *testing.T) {
 	qm := NewQueueManager()
 	bm := NewBindingManager()
 	cm := NewConsumerManager()
-	pub := NewPublisher(ex, qm, bm, store, cm, tracker)
+	pub := NewPublisher(ex, qm, bm, nil, store, cm, tracker)
 	_ = pub
 
 	// Create source queue with DLX.

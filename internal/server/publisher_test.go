@@ -11,7 +11,7 @@ func setupPublisher() *Publisher {
 	store := NewMessageStore()
 	cm := NewConsumerManager()
 	tracker := NewDeliveryTracker(store)
-	return NewPublisher(ex, qm, bm, store, cm, tracker)
+	return NewPublisher(ex, qm, bm, nil, store, cm, tracker)
 }
 
 // TestPublishDirect routes via direct exchange.
