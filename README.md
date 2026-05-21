@@ -58,7 +58,7 @@ make test
 | Message in-memory store | ✅ |
 | Routing & delivery | ✅ |
 | etcd persistence (Store interface + memory backend) | ✅ |
-| etcd persistence (etcd backend) | WIP |
+| etcd persistence (etcd backend) | ✅ |
 | Load persisted state on startup | ✅ |
 | Web management UI (htmx framework) | ✅ |
 | Web management UI — Overview page | ✅ |

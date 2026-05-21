@@ -58,7 +58,7 @@ make test
 | 消息内存存储 | ✅ |
 | 路由与投递 | ✅ |
 | etcd 持久化（Store 接口 + 内存后端） | ✅ |
-| etcd 持久化（etcd 后端） | 开发中 |
+| etcd 持久化（etcd 后端） | ✅ |
 | 启动时加载持久化状态 | ✅ |
 | Web 管理端（htmx 框架） | ✅ |
 | Web 管理端 — Overview 页面 | ✅ |
