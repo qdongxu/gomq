@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qdongxu/gomq/internal/cluster"
 	"github.com/qdongxu/gomq/internal/store"
 )
 
@@ -30,6 +31,9 @@ type Server struct {
 	closed      bool
 	connMap     map[*Connection]struct{} // active connections
 	startTime   time.Time
+	discovery   *cluster.Discovery
+	membership  *cluster.Membership
+	gossip      *cluster.Gossip
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -67,6 +71,21 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		connMap:   make(map[*Connection]struct{}),
 		startTime: time.Now(),
 	}
+}
+
+// EnableClusterDiscovery registers the server with etcd and
+// starts the gossip loop for node membership.
+func (s *Server) EnableClusterDiscovery(
+	client interface{ Grant(context.Context, int64) (*interface{}, error) },
+	localID, localAddr string,
+) error {
+	// Stub: real integration requires *clientv3.Client.
+	// This method is a placeholder for the wiring layer in
+	// cmd/gomqd/main.go to connect an etcd client.
+	_ = client
+	_ = localID
+	_ = localAddr
+	return nil
 }
 
 // RestoreFromStore loads all persisted queues, exchanges, and

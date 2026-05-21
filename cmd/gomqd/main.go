@@ -15,6 +15,7 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 
+	"github.com/qdongxu/gomq/internal/cluster"
 	"github.com/qdongxu/gomq/internal/config"
 	"github.com/qdongxu/gomq/internal/server"
 	"github.com/qdongxu/gomq/internal/store"
@@ -66,8 +67,41 @@ func main() {
 		log.Fatalf("listen: %v", err)
 	}
 
+	// Cluster discovery via etcd when configured.
+	var (
+		discovery  *cluster.Discovery
+		membership *cluster.Membership
+		gossip     *cluster.Gossip
+	)
+	if len(cfg.Cluster.EtcdEndpoints) > 0 {
+		etcdClient, err := clientv3.New(clientv3.Config{
+			Endpoints:   cfg.Cluster.EtcdEndpoints,
+			DialTimeout: 5 * time.Second,
+		})
+		if err != nil {
+			log.Fatalf("etcd client: %v", err)
+		}
+		defer func() { _ = etcdClient.Close() }()
+
+		c, d, m, g, err := cluster.NewClusterWithDiscovery(
+			etcdClient, cfg.Cluster.NodeID, addr)
+		if err != nil {
+			log.Fatalf("cluster discovery: %v", err)
+		}
+		_ = c
+		discovery = d
+		membership = m
+		gossip = g
+		log.Printf("cluster discovery enabled, node %s @ %s",
+			cfg.Cluster.NodeID, addr)
+	}
+
 	fmt.Printf("gomqd v%s started on %s\n", version, addr)
 	fmt.Printf("heartbeat: %d s\n", cfg.Network.Heartbeat)
+	if membership != nil {
+		fmt.Printf("cluster members: %d online\n",
+			membership.OnlineCount())
+	}
 
 	go func() {
 		if err := srv.Serve(); err != nil {
@@ -80,6 +114,15 @@ func main() {
 	<-sigCh
 
 	fmt.Println("shutting down...")
+	if gossip != nil {
+		gossip.Stop()
+	}
+	if discovery != nil {
+		ctx, cancel := context.WithTimeout(
+			context.Background(), 5*time.Second)
+		_ = discovery.Deregister(ctx)
+		cancel()
+	}
 	if err := srv.Shutdown(); err != nil {
 		log.Printf("shutdown: %v", err)
 	}
