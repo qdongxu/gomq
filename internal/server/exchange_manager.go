@@ -4,6 +4,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/qdongxu/gomq/internal/store"
@@ -56,7 +57,9 @@ func (m *ExchangeManager) Declare(
 	m.exchanges[name] = ex
 
 	if m.metaStore != nil {
-		_ = m.metaStore.SaveExchange(context.Background(), store.ExchangeMeta{
+		ctx, cancel := context.WithTimeout(
+			context.Background(), store.DefaultTimeout)
+		err := m.metaStore.SaveExchange(ctx, store.ExchangeMeta{
 			Name:       name,
 			Type:       string(exType),
 			Durable:    durable,
@@ -64,6 +67,10 @@ func (m *ExchangeManager) Declare(
 			Internal:   internal,
 			Args:       args,
 		})
+		cancel()
+		if err != nil {
+			log.Printf("save exchange %q: %v", name, err)
+		}
 	}
 	return ex, nil
 }
@@ -78,7 +85,13 @@ func (m *ExchangeManager) Delete(name string) error {
 	delete(m.exchanges, name)
 
 	if m.metaStore != nil {
-		_ = m.metaStore.DeleteExchange(context.Background(), name)
+		ctx, cancel := context.WithTimeout(
+			context.Background(), store.DefaultTimeout)
+		err := m.metaStore.DeleteExchange(ctx, name)
+		cancel()
+		if err != nil {
+			log.Printf("delete exchange %q: %v", name, err)
+		}
 	}
 	return nil
 }

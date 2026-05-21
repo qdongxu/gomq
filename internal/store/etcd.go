@@ -1,7 +1,4 @@
-//go:build etcd
-
 // etcd.go provides an etcd-backed Store implementation.
-// This file is only compiled when the "etcd" build tag is present.
 package store
 
 import (

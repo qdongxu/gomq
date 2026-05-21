@@ -4,6 +4,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/qdongxu/gomq/internal/store"
@@ -54,13 +55,19 @@ func (m *QueueManager) Declare(
 	m.queues[name] = q
 
 	if m.metaStore != nil {
-		_ = m.metaStore.SaveQueue(context.Background(), store.QueueMeta{
+		ctx, cancel := context.WithTimeout(
+			context.Background(), store.DefaultTimeout)
+		err := m.metaStore.SaveQueue(ctx, store.QueueMeta{
 			Name:       name,
 			Durable:    durable,
 			Exclusive:  exclusive,
 			AutoDelete: autoDelete,
 			Args:       args,
 		})
+		cancel()
+		if err != nil {
+			log.Printf("save queue %q: %v", name, err)
+		}
 	}
 	return q, nil
 }
@@ -75,7 +82,13 @@ func (m *QueueManager) Delete(name string) error {
 	delete(m.queues, name)
 
 	if m.metaStore != nil {
-		_ = m.metaStore.DeleteQueue(context.Background(), name)
+		ctx, cancel := context.WithTimeout(
+			context.Background(), store.DefaultTimeout)
+		err := m.metaStore.DeleteQueue(ctx, name)
+		cancel()
+		if err != nil {
+			log.Printf("delete queue %q: %v", name, err)
+		}
 	}
 	return nil
 }
