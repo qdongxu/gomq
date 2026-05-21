@@ -69,6 +69,7 @@ make test
 | Web 管理端 — Bindings 页面 | ✅ |
 | Web 管理端 — Admin 页面 | ✅ |
 | Quorum Queue（基于 Raft 的镜像复制） | ✅ |
+| Exchange-to-Exchange 绑定 | ✅ |
 | 集群节点发现（etcd） | ✅ |
 
 开发中 — 文档和功能随代码实现持续更新。

@@ -17,6 +17,7 @@ type Server struct {
 	exchanges   *ExchangeManager
 	queues      *QueueManager
 	bindings    *BindingManager
+	e2eBindings *E2EBindingManager
 	store       *MessageStore
 	consumers   *ConsumerManager
 	publisher   *Publisher
@@ -47,6 +48,7 @@ func NewServerWithStore(metaStore store.Store) *Server {
 	ex := NewExchangeManagerWithStore(metaStore)
 	qm := NewQueueManagerWithStore(metaStore)
 	bm := NewBindingManagerWithStore(metaStore)
+	e2ebm := NewE2EBindingManager()
 	store := NewMessageStore()
 	cm := NewConsumerManager()
 	tracker := NewDeliveryTracker(store)
@@ -54,22 +56,23 @@ func NewServerWithStore(metaStore store.Store) *Server {
 	prefetch.SetPrefetch(0, 0, false)
 	flowCtrl := NewFlowController()
 	deliverer := NewDeliverer(cm, store, tracker)
-	publisher := NewPublisher(ex, qm, bm, store, cm, tracker)
+	publisher := NewPublisher(ex, qm, bm, e2ebm, store, cm, tracker)
 
 	return &Server{
-		exchanges: ex,
-		queues:    qm,
-		bindings:  bm,
-		store:     store,
-		consumers: cm,
-		publisher: publisher,
-		deliverer: deliverer,
-		tracker:   tracker,
-		prefetch:  prefetch,
-		flowCtrl:  flowCtrl,
-		metaStore: metaStore,
-		connMap:   make(map[*Connection]struct{}),
-		startTime: time.Now(),
+		exchanges:   ex,
+		queues:      qm,
+		bindings:    bm,
+		e2eBindings: e2ebm,
+		store:       store,
+		consumers:   cm,
+		publisher:   publisher,
+		deliverer:   deliverer,
+		tracker:     tracker,
+		prefetch:    prefetch,
+		flowCtrl:    flowCtrl,
+		metaStore:   metaStore,
+		connMap:     make(map[*Connection]struct{}),
+		startTime:   time.Now(),
 	}
 }
 
@@ -233,6 +236,9 @@ func (s *Server) QueueManager() *QueueManager { return s.queues }
 
 // BindingManager returns the binding manager.
 func (s *Server) BindingManager() *BindingManager { return s.bindings }
+
+// E2EBindingManager returns the E2E binding manager.
+func (s *Server) E2EBindingManager() *E2EBindingManager { return s.e2eBindings }
 
 // MessageStore returns the message store.
 func (s *Server) MessageStore() *MessageStore { return s.store }

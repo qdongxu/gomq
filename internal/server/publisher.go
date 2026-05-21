@@ -12,6 +12,7 @@ type Publisher struct {
 	exchanges   *ExchangeManager
 	queues      *QueueManager
 	bindings    *BindingManager
+	e2eBindings *E2EBindingManager
 	store       *MessageStore
 	consumers   *ConsumerManager
 	deliverer   *Deliverer
@@ -31,20 +32,22 @@ func NewPublisher(
 	ex *ExchangeManager,
 	qm *QueueManager,
 	bm *BindingManager,
+	e2ebm *E2EBindingManager,
 	store *MessageStore,
 	cm *ConsumerManager,
 	tracker *DeliveryTracker,
 ) *Publisher {
 	d := NewDeliverer(cm, store, tracker)
 	return &Publisher{
-		exchanges: ex,
-		queues:    qm,
-		bindings:  bm,
-		store:     store,
-		consumers: cm,
-		deliverer: d,
-		tracker:   tracker,
-		stats:     make(map[string]*exchangeStats),
+		exchanges:   ex,
+		queues:      qm,
+		bindings:    bm,
+		e2eBindings: e2ebm,
+		store:       store,
+		consumers:   cm,
+		deliverer:   d,
+		tracker:     tracker,
+		stats:       make(map[string]*exchangeStats),
 	}
 }
 
@@ -55,20 +58,29 @@ func (p *Publisher) Publish(
 	msg *Message,
 	channelID uint16,
 ) (int, error) {
-	n, err := p.publishInternal(exchangeName, routingKey, msg, channelID, true)
+	n, err := p.publishInternal(exchangeName, routingKey, msg,
+		channelID, true, make(map[string]bool))
 	if n >= 0 && err == nil {
 		p.recordStats(exchangeName, int64(n))
 	}
 	return n, err
 }
 
-// publishInternal performs routing with optional DLX/max-length checks.
+// publishInternal performs routing with optional DLX/max-length checks
+// and E2E forwarding. visited prevents exchange routing loops.
 func (p *Publisher) publishInternal(
 	exchangeName, routingKey string,
 	msg *Message,
 	channelID uint16,
 	checkDLX bool,
+	visited map[string]bool,
 ) (int, error) {
+	if visited[exchangeName] {
+		return 0, fmt.Errorf("exchange loop detected: %s",
+			exchangeName)
+	}
+	visited[exchangeName] = true
+
 	ex, ok := p.exchanges.Get(exchangeName)
 	if !ok {
 		return 0, fmt.Errorf("exchange %q not found", exchangeName)
@@ -110,6 +122,21 @@ func (p *Publisher) publishInternal(
 
 		_ = p.deliverer.Deliver(msg, qn, channelID)
 	}
+
+	// Forward to destination exchanges via E2E bindings.
+	if p.e2eBindings != nil {
+		e2eList := p.e2eBindings.GetBindings(exchangeName)
+		for _, eb := range e2eList {
+			n2, err := p.publishInternal(
+				eb.Destination, eb.RoutingKey, msg,
+				channelID, checkDLX, visited)
+			if err != nil {
+				continue
+			}
+			queues = append(queues, make([]string, n2)...)
+		}
+	}
+
 	return len(queues), nil
 }
 
@@ -150,7 +177,8 @@ func (p *Publisher) deadLetter(
 	args map[string]interface{},
 ) {
 	_ = RouteDeadLetter(msg, args, func(ex, rk string, m *Message) error {
-		_, err := p.publishInternal(ex, rk, m, 0, false)
+		_, err := p.publishInternal(ex, rk, m, 0, false,
+			make(map[string]bool))
 		return err
 	})
 }

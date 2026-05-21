@@ -3,6 +3,7 @@ package server
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/qdongxu/gomq/pkg/protocol/amqp091"
 )
@@ -31,6 +32,8 @@ func RegisterBasicHandlers(
 	reg.Register(50, 50, handleQueueUnbind(srv))
 	reg.Register(40, 10, handleExchangeDeclare(srv))
 	reg.Register(40, 20, handleExchangeDelete(srv))
+	reg.Register(40, 30, handleExchangeBind(srv))
+	reg.Register(40, 40, handleExchangeUnbind(srv))
 	reg.Register(85, 10, handleConfirmSelect(srv))
 	reg.Register(90, 10, handleTxSelect(srv))
 	reg.Register(90, 20, handleTxCommit(srv))
@@ -840,11 +843,117 @@ func handleExchangeDelete(srv *Server) MethodHandler {
 		noWait := bits&0x02 != 0
 
 		srv.ExchangeManager().Delete(exchange)
+		srv.E2EBindingManager().UnbindAllForExchange(exchange)
 
 		if !noWait {
 			enc := amqp091.NewEncoder()
 			_ = enc.WriteUint16(40) // class
 			_ = enc.WriteUint16(21) // DeleteOk
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
+		return nil
+	}
+}
+
+// handleExchangeBind decodes Exchange.Bind and creates an
+// exchange-to-exchange binding.
+func handleExchangeBind(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		destination, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		source, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		routingKey, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		noWait := bits&0x01 != 0
+
+		args, err := dec.ReadTable()
+		if err != nil {
+			return err
+		}
+
+		// Prevent cycle: A->B->A.
+		e2ebm := srv.E2EBindingManager()
+		if e2ebm.HasCycle(source, destination) {
+			return fmt.Errorf("exchange bind cycle detected: %s→%s",
+				source, destination)
+		}
+
+		_, _ = e2ebm.Bind(source, destination, routingKey, args)
+
+		if !noWait {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(40) // class
+			_ = enc.WriteUint16(31) // BindOk
+			_ = ch.SendFrame(
+				&amqp091.Frame{
+					Type:    amqp091.FrameMethod,
+					Payload: enc.Bytes(),
+				})
+		}
+		return nil
+	}
+}
+
+// handleExchangeUnbind decodes Exchange.Unbind and removes an
+// exchange-to-exchange binding.
+func handleExchangeUnbind(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		dec := amqp091.NewDecoder(bytes.NewReader(payload))
+
+		// reserved-1 (short)
+		_, _ = dec.ReadUint16()
+
+		destination, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		source, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		routingKey, err := dec.ReadShortString()
+		if err != nil {
+			return err
+		}
+
+		bits, err := dec.ReadUint8()
+		if err != nil {
+			return err
+		}
+		noWait := bits&0x01 != 0
+
+		_ = srv.E2EBindingManager().Unbind(
+			source, destination, routingKey)
+
+		if !noWait {
+			enc := amqp091.NewEncoder()
+			_ = enc.WriteUint16(40) // class
+			_ = enc.WriteUint16(51) // UnbindOk
 			_ = ch.SendFrame(
 				&amqp091.Frame{
 					Type:    amqp091.FrameMethod,

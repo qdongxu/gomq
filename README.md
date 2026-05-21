@@ -69,6 +69,7 @@ make test
 | Web management UI — Bindings page | ✅ |
 | Web management UI — Admin page | ✅ |
 | Quorum Queue (Raft-based replication) | ✅ |
+| Exchange-to-Exchange Binding | ✅ |
 | Cluster node discovery via etcd | ✅ |
 
 WIP — documentation and features will be updated as code evolves.
