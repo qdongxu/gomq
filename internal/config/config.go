@@ -19,9 +19,10 @@ type Log struct {
 
 // Cluster holds node identity and peer discovery settings.
 type Cluster struct {
-	NodeID    string   `toml:"node_id"`    // unique node identifier
-	Discovery string   `toml:"discovery"`  // "static" or "etcd"
-	Nodes     []string `toml:"nodes"`     // peer addresses when discovery=static
+	NodeID        string   `toml:"node_id"`       // unique node identifier
+	Discovery     string   `toml:"discovery"`     // "static" or "etcd"
+	Nodes         []string `toml:"nodes"`          // peer addresses when discovery=static
+	EtcdEndpoints []string `toml:"etcd_endpoints"` // etcd server addresses
 }
 
 // Web holds the management UI configuration.

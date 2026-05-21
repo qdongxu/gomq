@@ -4,6 +4,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/qdongxu/gomq/internal/store"
@@ -46,12 +47,19 @@ func (m *BindingManager) Bind(
 	m.byQueue[queue] = append(m.byQueue[queue], b)
 
 	if m.metaStore != nil {
-		_ = m.metaStore.SaveBinding(context.Background(), store.BindingMeta{
+		ctx, cancel := context.WithTimeout(
+			context.Background(), store.DefaultTimeout)
+		err := m.metaStore.SaveBinding(ctx, store.BindingMeta{
 			Exchange:   exchange,
 			Queue:      queue,
 			RoutingKey: routingKey,
 			Args:       args,
 		})
+		cancel()
+		if err != nil {
+			log.Printf("save binding %s-%s-%s: %v",
+				exchange, queue, routingKey, err)
+		}
 	}
 	return b, nil
 }
@@ -76,7 +84,14 @@ func (m *BindingManager) Unbind(
 	}
 
 	if m.metaStore != nil {
-		_ = m.metaStore.DeleteBinding(context.Background(), exchange, queue, routingKey)
+		ctx, cancel := context.WithTimeout(
+			context.Background(), store.DefaultTimeout)
+		err := m.metaStore.DeleteBinding(ctx, exchange, queue, routingKey)
+		cancel()
+		if err != nil {
+			log.Printf("delete binding %s-%s-%s: %v",
+				exchange, queue, routingKey, err)
+		}
 	}
 	return nil
 }

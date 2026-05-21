@@ -4,15 +4,20 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/qdongxu/gomq/internal/config"
 	"github.com/qdongxu/gomq/internal/server"
+	"github.com/qdongxu/gomq/internal/store"
 )
 
 const version = "0.1.0"
@@ -33,7 +38,24 @@ func main() {
 		log.Fatalf("invalid config: %v", err)
 	}
 
-	srv := server.NewServer()
+	metaStore, closeStore, err := newStore(cfg)
+	if err != nil {
+		log.Fatalf("init store: %v", err)
+	}
+	if closeStore != nil {
+		defer closeStore()
+	}
+
+	srv := server.NewServerWithStore(metaStore)
+
+	if metaStore != nil {
+		ctx, cancel := context.WithTimeout(
+			context.Background(), 10*time.Second)
+		if err := srv.RestoreFromStore(ctx); err != nil {
+			log.Fatalf("restore from store: %v", err)
+		}
+		cancel()
+	}
 
 	addr := "0.0.0.0:5672"
 	if len(cfg.Network.Listeners) > 0 {
@@ -62,4 +84,26 @@ func main() {
 		log.Printf("shutdown: %v", err)
 	}
 	fmt.Println("gomqd stopped")
+}
+
+// newStore creates a persistence backend based on configuration.
+func newStore(cfg *config.Config) (
+	store.Store,
+	func(),
+	error,
+) {
+	if len(cfg.Cluster.EtcdEndpoints) > 0 {
+		client, err := clientv3.New(clientv3.Config{
+			Endpoints:   cfg.Cluster.EtcdEndpoints,
+			DialTimeout: 5 * time.Second,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf(
+				"etcd client: %w", err)
+		}
+		return store.NewEtcdStore(client, "/gomq"),
+			func() { _ = client.Close() },
+			nil
+	}
+	return store.NewMemoryStore(), nil, nil
 }
