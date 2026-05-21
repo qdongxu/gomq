@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/qdongxu/gomq/internal/store"
 )
@@ -28,6 +29,7 @@ type Server struct {
 	wg          sync.WaitGroup
 	closed      bool
 	connMap     map[*Connection]struct{} // active connections
+	startTime   time.Time
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -63,6 +65,7 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		flowCtrl:  flowCtrl,
 		metaStore: metaStore,
 		connMap:   make(map[*Connection]struct{}),
+		startTime: time.Now(),
 	}
 }
 
@@ -229,3 +232,10 @@ func (s *Server) Prefetch() *Prefetch { return s.prefetch }
 
 // FlowController returns the flow controller.
 func (s *Server) FlowController() *FlowController { return s.flowCtrl }
+
+// StartTime returns when the server was created.
+func (s *Server) StartTime() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.startTime
+}

@@ -26,6 +26,7 @@ func NewServer() *Server {
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/", s.handleIndex)
 	s.mux.HandleFunc("/api/overview", s.handleOverview)
+	s.mux.HandleFunc("/api/admin", s.handleAdmin)
 	s.mux.HandleFunc("/api/exchanges", s.handleExchanges)
 	s.mux.HandleFunc("/api/queues", s.handleQueues)
 	s.mux.HandleFunc("/api/bindings", s.handleBindings)

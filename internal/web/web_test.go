@@ -15,6 +15,7 @@ type mockBroker struct {
 	connections []ConnectionInfo
 	channels    []ChannelInfo
 	overview    OverviewInfo
+	admin       AdminInfo
 }
 
 func (m *mockBroker) ExchangeList() []ExchangeInfo     { return m.exchanges }
@@ -23,6 +24,7 @@ func (m *mockBroker) BindingList() []BindingInfo         { return m.bindings }
 func (m *mockBroker) ConnectionList() []ConnectionInfo   { return m.connections }
 func (m *mockBroker) ChannelList() []ChannelInfo       { return m.channels }
 func (m *mockBroker) Overview() OverviewInfo             { return m.overview }
+func (m *mockBroker) Admin() AdminInfo                   { return m.admin }
 
 func TestHandleIndex(t *testing.T) {
 	srv := NewServer()
@@ -335,6 +337,45 @@ func TestHandleOverview(t *testing.T) {
 	}
 	if out.Connections != 3 || out.Messages != 42 {
 		t.Fatalf("unexpected response: %+v", out)
+	}
+}
+
+func TestHandleAdmin(t *testing.T) {
+	SetAdminBroker(&mockBroker{
+		admin: AdminInfo{
+			Version: "0.1.0",
+			Uptime:  "1m30s",
+			VHosts: []VHostInfo{
+				{Name: "/", Exchanges: 3, Queues: 2},
+			},
+			Users: []UserInfo{
+				{Username: "guest"},
+			},
+		},
+	})
+	defer SetAdminBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET", "/api/admin", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var out AdminInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.Version != "0.1.0" {
+		t.Fatalf("unexpected version: %s", out.Version)
+	}
+	if len(out.VHosts) != 1 || out.VHosts[0].Name != "/" {
+		t.Fatalf("unexpected vhosts: %+v", out.VHosts)
+	}
+	if len(out.Users) != 1 || out.Users[0].Username != "guest" {
+		t.Fatalf("unexpected users: %+v", out.Users)
 	}
 }
 
