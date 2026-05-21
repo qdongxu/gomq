@@ -71,6 +71,8 @@ type QueueInfo struct {
 	Durable   bool   `json:"durable"`
 	Messages  int    `json:"messages"`
 	Consumers int    `json:"consumers"`
+	Bindings  int    `json:"bindings"`
+	Memory    int64  `json:"memory"`
 }
 
 // BindingInfo holds binding data for the UI.
@@ -94,14 +96,6 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = indexTemplate.Execute(w, nil)
-}
-
-func (s *Server) handleQueues(w http.ResponseWriter, r *http.Request) {
-	if broker == nil {
-		writeJSON(w, []QueueInfo{})
-		return
-	}
-	writeJSON(w, broker.QueueList())
 }
 
 func (s *Server) handleBindings(w http.ResponseWriter, r *http.Request) {

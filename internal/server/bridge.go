@@ -39,11 +39,18 @@ func (wb *WebBroker) QueueList() []web.QueueInfo {
 	qs := wb.srv.QueueManager().List()
 	out := make([]web.QueueInfo, 0, len(qs))
 	for _, q := range qs {
+		consumers := len(
+			wb.srv.ConsumerManager().GetConsumers(q.Name),
+		)
+		bindings := wb.srv.BindingManager().
+			GetBindingsForQueue(q.Name)
 		out = append(out, web.QueueInfo{
 			Name:      q.Name,
 			Durable:   q.Durable,
 			Messages:  wb.srv.MessageStore().Len(q.Name),
-			Consumers: 0, // TODO: hook into ConsumerManager
+			Consumers: consumers,
+			Bindings:  len(bindings),
+			Memory:    wb.srv.MessageStore().Bytes(q.Name),
 		})
 	}
 	return out
