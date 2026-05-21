@@ -2,6 +2,8 @@
 package server
 
 import (
+	"time"
+
 	"github.com/qdongxu/gomq/internal/web"
 )
 
@@ -163,4 +165,39 @@ func (wb *WebBroker) ChannelList() []web.ChannelInfo {
 		}
 	}
 	return out
+}
+
+const serverVersion = "0.1.0"
+
+// Admin returns server admin data for the UI.
+func (wb *WebBroker) Admin() web.AdminInfo {
+	uptime := time.Since(wb.srv.StartTime())
+	uptimeStr := ""
+	if uptime < time.Minute {
+		uptimeStr = uptime.Round(time.Second).String()
+	} else if uptime < time.Hour {
+		uptimeStr = uptime.Round(time.Minute).String()
+	} else {
+		uptimeStr = uptime.Round(time.Minute).String()
+	}
+
+	vhosts := []web.VHostInfo{
+		{
+			Name:      "/",
+			Exchanges: len(wb.srv.ExchangeManager().List()),
+			Queues:    len(wb.srv.QueueManager().List()),
+		},
+	}
+
+	// Users are not yet configurable via TOML; Auth struct is
+	// intentionally empty. Return empty list until config-driven
+	// authentication is implemented.
+	users := []web.UserInfo{}
+
+	return web.AdminInfo{
+		Version: serverVersion,
+		Uptime:  uptimeStr,
+		VHosts:  vhosts,
+		Users:   users,
+	}
 }

@@ -33,6 +33,14 @@
 		<div class="card"><h3>Messages</h3><p>–</p></div>
 	</div>
 
+	<h2>Admin</h2>
+	<div class="overview" hx-get="/api/admin" hx-trigger="load, every 5s">
+		<div class="card"><h3>Version</h3><p>–</p></div>
+		<div class="card"><h3>Uptime</h3><p>–</p></div>
+		<div class="card"><h3>VHosts</h3><p>–</p></div>
+		<div class="card"><h3>Users</h3><p>–</p></div>
+	</div>
+
 	<h2>Connections</h2>
 	<table hx-get="/api/connections" hx-trigger="load" hx-target="#connections">
 		<thead><tr><th>Remote Address</th><th>State</th><th>Channels</th><th>Heartbeat</th></tr></thead>
