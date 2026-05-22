@@ -41,6 +41,8 @@ type Server struct {
 	gossip      *cluster.Gossip
 	mirrors     *MirrorManager
 	plugins     *PluginManager
+	federations *FederationManager
+	shovels     *ShovelManager
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -80,6 +82,8 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		connMap:     make(map[*Connection]struct{}),
 		mirrors:     NewMirrorManager(),
 		plugins:     NewPluginManager(),
+		federations: NewFederationManager(),
+		shovels:     NewShovelManager(),
 		startTime:   time.Now(),
 		metrics:     &metrics.NoOp{},
 	}
@@ -322,6 +326,12 @@ func (s *Server) MirrorManager() *MirrorManager { return s.mirrors }
 
 // PluginManager returns the server's plugin manager.
 func (s *Server) PluginManager() *PluginManager { return s.plugins }
+
+// FederationManager returns the server's federation manager.
+func (s *Server) FederationManager() *FederationManager { return s.federations }
+
+// ShovelManager returns the server's shovel manager.
+func (s *Server) ShovelManager() *ShovelManager { return s.shovels }
 
 // FlowController returns the flow controller.
 func (s *Server) FlowController() *FlowController { return s.flowCtrl }

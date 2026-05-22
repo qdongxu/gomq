@@ -75,6 +75,7 @@ make test
 | Prometheus 指标导出 | ✅ |
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
+| Federation / Shovel | ✅ |
 
 开发中 — 文档和功能随代码实现持续更新。
 

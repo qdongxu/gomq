@@ -75,6 +75,7 @@ make test
 | Prometheus metrics export | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
 | Plugin System | ✅ |
+| Federation / Shovel | ✅ |
 
 WIP — documentation and features will be updated as code evolves.
 
