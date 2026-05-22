@@ -39,6 +39,7 @@ type Server struct {
 	discovery   *cluster.Discovery
 	membership  *cluster.Membership
 	gossip      *cluster.Gossip
+	mirrors     *MirrorManager
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -76,6 +77,7 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		flowCtrl:    flowCtrl,
 		metaStore:   metaStore,
 		connMap:     make(map[*Connection]struct{}),
+		mirrors:     NewMirrorManager(),
 		startTime:   time.Now(),
 		metrics:     &metrics.NoOp{},
 	}
@@ -312,6 +314,9 @@ func (s *Server) DeliveryTracker() *DeliveryTracker { return s.tracker }
 
 // Prefetch returns the prefetch controller.
 func (s *Server) Prefetch() *Prefetch { return s.prefetch }
+
+// MirrorManager returns the server's mirror manager.
+func (s *Server) MirrorManager() *MirrorManager { return s.mirrors }
 
 // FlowController returns the flow controller.
 func (s *Server) FlowController() *FlowController { return s.flowCtrl }

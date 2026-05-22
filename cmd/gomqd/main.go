@@ -158,11 +158,20 @@ func main() {
 		}
 	}()
 
+	// Start mirror queue background sync loop.
+	var stopMirrorSync func()
+	stopMirrorSync = srv.MirrorManager().StartSyncLoop(
+		30 * time.Second,
+	)
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
 
 	fmt.Println("shutting down...")
+	if stopMirrorSync != nil {
+		stopMirrorSync()
+	}
 	if gossip != nil {
 		gossip.Stop()
 	}

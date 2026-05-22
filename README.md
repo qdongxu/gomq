@@ -73,6 +73,7 @@ make test
 | Cluster node discovery via etcd | ✅ |
 | TLS support (AMQP over TLS + mTLS) | ✅ |
 | Prometheus metrics export | ✅ |
+| Mirrored Queue (HA Queue) | ✅ |
 
 WIP — documentation and features will be updated as code evolves.
 
