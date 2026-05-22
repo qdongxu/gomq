@@ -72,6 +72,7 @@ make test
 | Exchange-to-Exchange Binding | ✅ |
 | Cluster node discovery via etcd | ✅ |
 | TLS support (AMQP over TLS + mTLS) | ✅ |
+| Prometheus metrics export | ✅ |
 
 WIP — documentation and features will be updated as code evolves.
 

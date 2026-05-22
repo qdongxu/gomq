@@ -436,6 +436,7 @@ func handleAck(srv *Server) MethodHandler {
 		}
 
 		_ = srv.DeliveryTracker().Ack(tag, ch.ID())
+		srv.Metrics().MessageAcked()
 		return nil
 	}
 }
@@ -458,6 +459,7 @@ func handleNack(srv *Server) MethodHandler {
 
 		d := srv.DeliveryTracker().GetDelivery(tag, ch.ID())
 		_ = srv.DeliveryTracker().Nack(tag, ch.ID(), requeue)
+		srv.Metrics().MessageNacked()
 
 		// Route to dead-letter exchange on negative ack without requeue.
 		if !requeue && d != nil {
@@ -487,6 +489,7 @@ func handleReject(srv *Server) MethodHandler {
 
 		d := srv.DeliveryTracker().GetDelivery(tag, ch.ID())
 		_ = srv.DeliveryTracker().Reject(tag, ch.ID(), requeue)
+		srv.Metrics().MessageNacked()
 
 		// Route to dead-letter exchange on reject without requeue.
 		if !requeue && d != nil {

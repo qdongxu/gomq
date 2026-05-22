@@ -7,6 +7,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/qdongxu/gomq/internal/metrics"
 	"github.com/qdongxu/gomq/internal/store"
 )
 
@@ -15,6 +16,7 @@ type QueueManager struct {
 	queues    map[string]*Queue
 	metaStore store.Store
 	mu        sync.RWMutex
+	metrics   metrics.Collector
 }
 
 // NewQueueManager creates an empty queue manager.
@@ -28,7 +30,15 @@ func NewQueueManagerWithStore(metaStore store.Store) *QueueManager {
 	return &QueueManager{
 		queues:    make(map[string]*Queue),
 		metaStore: metaStore,
+		metrics:   &metrics.NoOp{},
 	}
+}
+
+// SetMetrics configures the metrics collector.
+func (m *QueueManager) SetMetrics(mc metrics.Collector) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.metrics = mc
 }
 
 // Declare creates a queue or verifies an existing one matches.
@@ -53,6 +63,7 @@ func (m *QueueManager) Declare(
 
 	q := NewQueue(name, durable, exclusive, autoDelete, args, owner)
 	m.queues[name] = q
+	m.metrics.QueueDeclared()
 
 	if m.metaStore != nil {
 		ctx, cancel := context.WithTimeout(
@@ -80,6 +91,7 @@ func (m *QueueManager) Delete(name string) error {
 		return fmt.Errorf("queue %q not found", name)
 	}
 	delete(m.queues, name)
+	m.metrics.QueueDeleted()
 
 	if m.metaStore != nil {
 		ctx, cancel := context.WithTimeout(

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/qdongxu/gomq/internal/metrics"
 )
 
 // Publisher routes published messages to queues and consumers.
@@ -19,6 +21,7 @@ type Publisher struct {
 	tracker     *DeliveryTracker
 	stats       map[string]*exchangeStats
 	statsMu     sync.RWMutex
+	metrics     metrics.Collector
 }
 
 // exchangeStats holds per-exchange message counters.
@@ -48,7 +51,15 @@ func NewPublisher(
 		deliverer:   d,
 		tracker:     tracker,
 		stats:       make(map[string]*exchangeStats),
+		metrics:     &metrics.NoOp{},
 	}
+}
+
+// SetMetrics configures the metrics collector.
+func (p *Publisher) SetMetrics(m metrics.Collector) {
+	p.statsMu.Lock()
+	defer p.statsMu.Unlock()
+	p.metrics = m
 }
 
 // Publish routes a message to bound queues and delivers to consumers.
@@ -62,6 +73,7 @@ func (p *Publisher) Publish(
 		channelID, true, make(map[string]bool))
 	if n >= 0 && err == nil {
 		p.recordStats(exchangeName, int64(n))
+		p.metrics.MessagePublished()
 	}
 	return n, err
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/qdongxu/gomq/internal/cluster"
+	"github.com/qdongxu/gomq/internal/metrics"
 	"github.com/qdongxu/gomq/internal/store"
 )
 
@@ -29,6 +30,7 @@ type Server struct {
 	metaStore   store.Store
 	listener    net.Listener
 	tlsListener net.Listener
+	metrics     metrics.Collector
 	mu          sync.RWMutex
 	wg          sync.WaitGroup
 	closed      bool
@@ -75,6 +77,7 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		metaStore:   metaStore,
 		connMap:     make(map[*Connection]struct{}),
 		startTime:   time.Now(),
+		metrics:     &metrics.NoOp{},
 	}
 }
 
@@ -244,12 +247,14 @@ func (s *Server) registerConn(c *Connection) {
 		s.connMap = make(map[*Connection]struct{})
 	}
 	s.connMap[c] = struct{}{}
+	s.metrics.ConnectionOpened()
 }
 
 func (s *Server) unregisterConn(c *Connection) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.connMap, c)
+	s.metrics.ConnectionClosed()
 }
 
 // ConnectionList returns a snapshot of active connections.
@@ -310,6 +315,25 @@ func (s *Server) Prefetch() *Prefetch { return s.prefetch }
 
 // FlowController returns the flow controller.
 func (s *Server) FlowController() *FlowController { return s.flowCtrl }
+
+// SetMetrics configures the metrics collector and propagates it to all
+// sub-components.
+func (s *Server) SetMetrics(m metrics.Collector) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.metrics = m
+	s.queues.SetMetrics(m)
+	s.consumers.SetMetrics(m)
+	s.publisher.SetMetrics(m)
+	s.deliverer.SetMetrics(m)
+}
+
+// Metrics returns the current metrics collector.
+func (s *Server) Metrics() metrics.Collector {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.metrics
+}
 
 // StartTime returns when the server was created.
 func (s *Server) StartTime() time.Time {

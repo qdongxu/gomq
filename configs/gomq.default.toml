@@ -58,3 +58,9 @@ key_file  = "/path/to/server.key"
 
 # Optional: restrict cipher suites.
 # cipher_suites = ["TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"]
+
+[metrics]
+# Prometheus metrics export endpoint.
+# When enabled, gomq exposes /metrics on port 15692 (RabbitMQ default).
+enabled = false
+listen  = "0.0.0.0:15692"
