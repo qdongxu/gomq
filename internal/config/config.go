@@ -43,6 +43,13 @@ type Web struct {
 	PathPrefix string `toml:"path_prefix"` // URL prefix for reverse-proxy support
 }
 
+// Metrics holds Prometheus metrics export configuration.
+type Metrics struct {
+	Enabled bool   `toml:"enabled"` // enable /metrics endpoint
+	Listen  string `toml:"listen"`  // HTTP bind address,
+		// e.g. "0.0.0.0:15692"
+}
+
 // Auth is a placeholder for authentication settings.
 // Real implementation will be added in a later Issue.
 type Auth struct {
@@ -57,6 +64,7 @@ type Config struct {
 	Web     Web     `toml:"web"`
 	Auth    Auth    `toml:"auth"`
 	TLS     TLS     `toml:"tls"`
+	Metrics Metrics `toml:"metrics"`
 }
 
 // Default returns a Config populated with safe defaults.

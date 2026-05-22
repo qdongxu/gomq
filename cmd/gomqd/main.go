@@ -17,6 +17,7 @@ import (
 
 	"github.com/qdongxu/gomq/internal/cluster"
 	"github.com/qdongxu/gomq/internal/config"
+	"github.com/qdongxu/gomq/internal/metrics"
 	"github.com/qdongxu/gomq/internal/server"
 	"github.com/qdongxu/gomq/internal/store"
 )
@@ -93,6 +94,23 @@ func main() {
 		); err != nil {
 			log.Fatalf("listen tls: %v", err)
 		}
+	}
+
+	// Metrics endpoint when configured.
+	if cfg.Metrics.Enabled {
+		metricsAddr := "0.0.0.0:15692"
+		if cfg.Metrics.Listen != "" {
+			metricsAddr = cfg.Metrics.Listen
+		}
+		mc := metrics.NewPrometheusCollector()
+		srv.SetMetrics(mc)
+		mc.NodeUp()
+		go func() {
+			log.Printf("metrics endpoint: http://%s/metrics", metricsAddr)
+			if err := mc.ListenAndServe(metricsAddr); err != nil {
+				log.Printf("metrics server: %v", err)
+			}
+		}()
 	}
 
 	// Cluster discovery via etcd when configured.

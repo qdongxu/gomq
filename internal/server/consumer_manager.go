@@ -4,6 +4,8 @@ package server
 import (
 	"fmt"
 	"sync"
+
+	"github.com/qdongxu/gomq/internal/metrics"
 )
 
 // ConsumerManager tracks all active consumers.
@@ -11,6 +13,7 @@ type ConsumerManager struct {
 	byQueue map[string][]*Consumer
 	byTag   map[string]*Consumer
 	mu      sync.RWMutex
+	metrics metrics.Collector
 }
 
 // NewConsumerManager creates an empty consumer manager.
@@ -18,7 +21,15 @@ func NewConsumerManager() *ConsumerManager {
 	return &ConsumerManager{
 		byQueue: make(map[string][]*Consumer),
 		byTag:   make(map[string]*Consumer),
+		metrics: &metrics.NoOp{},
 	}
+}
+
+// SetMetrics configures the metrics collector.
+func (m *ConsumerManager) SetMetrics(mc metrics.Collector) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.metrics = mc
 }
 
 // Subscribe registers a consumer for a queue.
@@ -48,6 +59,7 @@ func (m *ConsumerManager) Subscribe(
 	c := NewConsumer(tag, queueName, ch, autoAck, false, exclusive, args)
 	m.byQueue[queueName] = append(m.byQueue[queueName], c)
 	m.byTag[tag] = c
+	m.metrics.ConsumerAdded()
 	return c, nil
 }
 
@@ -69,6 +81,7 @@ func (m *ConsumerManager) Unsubscribe(tag string) error {
 			break
 		}
 	}
+	m.metrics.ConsumerRemoved()
 	return nil
 }
 

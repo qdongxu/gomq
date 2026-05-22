@@ -72,6 +72,7 @@ make test
 | Exchange-to-Exchange 绑定 | ✅ |
 | 集群节点发现（etcd） | ✅ |
 | TLS 支持（AMQP over TLS + mTLS） | ✅ |
+| Prometheus 指标导出 | ✅ |
 
 开发中 — 文档和功能随代码实现持续更新。
 
