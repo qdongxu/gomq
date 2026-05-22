@@ -164,6 +164,13 @@ func main() {
 		30 * time.Second,
 	)
 
+	// Initialise plugins.
+	pluginNames := srv.PluginManager().LoadAll()
+	if len(pluginNames) > 0 {
+		srv.PluginManager().InitAll(srv)
+		log.Printf("plugins loaded: %v", pluginNames)
+	}
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
