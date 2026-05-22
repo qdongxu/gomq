@@ -40,6 +40,7 @@ type Server struct {
 	membership  *cluster.Membership
 	gossip      *cluster.Gossip
 	mirrors     *MirrorManager
+	plugins     *PluginManager
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -78,6 +79,7 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		metaStore:   metaStore,
 		connMap:     make(map[*Connection]struct{}),
 		mirrors:     NewMirrorManager(),
+		plugins:     NewPluginManager(),
 		startTime:   time.Now(),
 		metrics:     &metrics.NoOp{},
 	}
@@ -317,6 +319,9 @@ func (s *Server) Prefetch() *Prefetch { return s.prefetch }
 
 // MirrorManager returns the server's mirror manager.
 func (s *Server) MirrorManager() *MirrorManager { return s.mirrors }
+
+// PluginManager returns the server's plugin manager.
+func (s *Server) PluginManager() *PluginManager { return s.plugins }
 
 // FlowController returns the flow controller.
 func (s *Server) FlowController() *FlowController { return s.flowCtrl }

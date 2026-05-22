@@ -74,6 +74,7 @@ make test
 | TLS support (AMQP over TLS + mTLS) | ✅ |
 | Prometheus metrics export | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
+| Plugin System | ✅ |
 
 WIP — documentation and features will be updated as code evolves.
 
