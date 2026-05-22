@@ -71,6 +71,7 @@ make test
 | Quorum Queue (Raft-based replication) | ✅ |
 | Exchange-to-Exchange Binding | ✅ |
 | Cluster node discovery via etcd | ✅ |
+| TLS support (AMQP over TLS + mTLS) | ✅ |
 
 WIP — documentation and features will be updated as code evolves.
 

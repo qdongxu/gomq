@@ -44,3 +44,17 @@ path_prefix = "/"
 
 [auth]
 # Placeholder for authentication settings.
+
+[tls]
+# TLS/SSL configuration for encrypted AMQP connections.
+# When enabled, gomq listens on a second port (default 5671) for TLS.
+enabled = false
+cert_file = "/path/to/server.crt"
+key_file  = "/path/to/server.key"
+
+# Optional: enable mutual TLS (client certificate verification).
+# ca_file       = "/path/to/ca.crt"
+# verify_client = false
+
+# Optional: restrict cipher suites.
+# cipher_suites = ["TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"]

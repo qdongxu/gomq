@@ -67,6 +67,34 @@ func main() {
 		log.Fatalf("listen: %v", err)
 	}
 
+	// TLS listener when configured.
+	var tlsAddr string
+	if cfg.TLS.Enabled {
+		tlsCfg, err := server.NewTLSConfig(
+			cfg.TLS.CertFile, cfg.TLS.KeyFile,
+			cfg.TLS.CAFile, cfg.TLS.VerifyClient,
+		)
+		if err != nil {
+			log.Fatalf("tls config: %v", err)
+		}
+		if len(cfg.TLS.CipherSuites) > 0 {
+			if err := tlsCfg.SetCipherSuites(
+				cfg.TLS.CipherSuites,
+			); err != nil {
+				log.Fatalf("cipher suites: %v", err)
+			}
+		}
+		tlsAddr = "0.0.0.0:5671"
+		if len(cfg.Network.Listeners) > 1 {
+			tlsAddr = cfg.Network.Listeners[1]
+		}
+		if err := srv.ListenTLS(
+			tlsAddr, tlsCfg.Config(),
+		); err != nil {
+			log.Fatalf("listen tls: %v", err)
+		}
+	}
+
 	// Cluster discovery via etcd when configured.
 	var (
 		discovery  *cluster.Discovery
@@ -97,6 +125,9 @@ func main() {
 	}
 
 	fmt.Printf("gomqd v%s started on %s\n", version, addr)
+	if tlsAddr != "" {
+		fmt.Printf("tls listener: %s\n", tlsAddr)
+	}
 	fmt.Printf("heartbeat: %d s\n", cfg.Network.Heartbeat)
 	if membership != nil {
 		fmt.Printf("cluster members: %d online\n",

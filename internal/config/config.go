@@ -11,6 +11,16 @@ type Network struct {
 	ChannelMax  int      `toml:"channel_max"`  // max channels per connection, >= 1
 }
 
+// TLS holds TLS/SSL listener configuration.
+type TLS struct {
+	Enabled      bool     `toml:"enabled"`       // enable TLS listener
+	CertFile     string   `toml:"cert_file"`      // path to server certificate
+	KeyFile      string   `toml:"key_file"`       // path to server private key
+	CAFile       string   `toml:"ca_file"`        // path to CA cert for client verify
+	VerifyClient bool     `toml:"verify_client"`  // require client cert (mTLS)
+	CipherSuites []string `toml:"cipher_suites"` // optional cipher suite names
+}
+
 // Log holds logging configuration.
 type Log struct {
 	Level  string `toml:"level"`   // debug, info, warn, error
@@ -46,6 +56,7 @@ type Config struct {
 	Cluster Cluster `toml:"cluster"`
 	Web     Web     `toml:"web"`
 	Auth    Auth    `toml:"auth"`
+	TLS     TLS     `toml:"tls"`
 }
 
 // Default returns a Config populated with safe defaults.

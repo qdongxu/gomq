@@ -71,6 +71,7 @@ make test
 | Quorum Queue（基于 Raft 的镜像复制） | ✅ |
 | Exchange-to-Exchange 绑定 | ✅ |
 | 集群节点发现（etcd） | ✅ |
+| TLS 支持（AMQP over TLS + mTLS） | ✅ |
 
 开发中 — 文档和功能随代码实现持续更新。
 

@@ -3,6 +3,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"sync"
@@ -27,6 +28,7 @@ type Server struct {
 	flowCtrl    *FlowController
 	metaStore   store.Store
 	listener    net.Listener
+	tlsListener net.Listener
 	mu          sync.RWMutex
 	wg          sync.WaitGroup
 	closed      bool
@@ -153,15 +155,62 @@ func (s *Server) Listen(addr string) error {
 	return nil
 }
 
+// ListenTLS starts a TLS listener on the given address.
+func (s *Server) ListenTLS(addr string, tlsConfig *tls.Config) error {
+	l, err := tls.Listen("tcp", addr, tlsConfig)
+	if err != nil {
+		return fmt.Errorf("listen tls %q: %w", addr, err)
+	}
+	s.mu.Lock()
+	s.tlsListener = l
+	s.mu.Unlock()
+	return nil
+}
+
 // Serve accepts connections and runs the AMQP frame loop.
 func (s *Server) Serve() error {
 	s.mu.RLock()
 	l := s.listener
+	tlsL := s.tlsListener
 	s.mu.RUnlock()
-	if l == nil {
+	if l == nil && tlsL == nil {
 		return fmt.Errorf("no listener")
 	}
 
+	var wg sync.WaitGroup
+	errCh := make(chan error, 2)
+
+	if l != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := s.serveListener(l); err != nil {
+				errCh <- err
+			}
+		}()
+	}
+	if tlsL != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := s.serveListener(tlsL); err != nil {
+				errCh <- err
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// serveListener accepts connections from a single listener.
+func (s *Server) serveListener(l net.Listener) error {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -214,15 +263,19 @@ func (s *Server) ConnectionList() []*Connection {
 	return out
 }
 
-// Shutdown closes the listener and waits for connections to finish.
+// Shutdown closes all listeners and waits for connections to finish.
 func (s *Server) Shutdown() error {
 	s.mu.Lock()
 	s.closed = true
 	l := s.listener
+	tlsL := s.tlsListener
 	s.mu.Unlock()
 
 	if l != nil {
 		_ = l.Close()
+	}
+	if tlsL != nil {
+		_ = tlsL.Close()
 	}
 	s.wg.Wait()
 	return nil
