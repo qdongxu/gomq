@@ -171,6 +171,10 @@ func main() {
 		log.Printf("plugins loaded: %v", pluginNames)
 	}
 
+	// Start federation and shovel links (placeholder stubs).
+	srv.FederationManager().StartAll()
+	srv.ShovelManager().StartAll()
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
