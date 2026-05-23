@@ -74,7 +74,8 @@ make test
 | TLS 支持（AMQP over TLS + mTLS） | ✅ |
 | Prometheus 指标导出 | ✅ |
 | 内存池与批处理（性能优化） | ✅ |
-| Channel.Recover 及边缘方法 | 🔄 |
+| Channel.Recover 及边缘方法 | ✅ |
+| ACL（访问控制列表）——虚拟主机级权限 | ✅ |
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |

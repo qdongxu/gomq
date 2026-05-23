@@ -74,7 +74,8 @@ make test
 | TLS support (AMQP over TLS + mTLS) | ✅ |
 | Prometheus metrics export | ✅ |
 | Memory pool & batching (performance) | ✅ |
-| Channel.Recover and edge methods | 🔄 |
+| Channel.Recover and edge methods | ✅ |
+| ACL (Access Control List) — vhost-level permissions | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
 | Plugin System | ✅ |
 | Federation / Shovel | ✅ |
