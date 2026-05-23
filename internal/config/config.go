@@ -56,6 +56,21 @@ type Auth struct {
 	// intentionally empty for now
 }
 
+// ACLRule is a single access-control entry.
+type ACLRule struct {
+	User         string `toml:"user"`
+	VHost        string `toml:"vhost"`
+	ResourceType string `toml:"resource_type"`
+	ResourceName string `toml:"resource_name"`
+	Permission   string `toml:"permission"`
+	Allow        bool   `toml:"allow"`
+}
+
+// ACL holds the access-control list configuration.
+type ACL struct {
+	Rules []ACLRule `toml:"rules"`
+}
+
 // Config is the top-level server configuration.
 type Config struct {
 	Network Network `toml:"network"`
@@ -63,6 +78,7 @@ type Config struct {
 	Cluster Cluster `toml:"cluster"`
 	Web     Web     `toml:"web"`
 	Auth    Auth    `toml:"auth"`
+	ACL     ACL     `toml:"acl"`
 	TLS     TLS     `toml:"tls"`
 	Metrics Metrics `toml:"metrics"`
 }
