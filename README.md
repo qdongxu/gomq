@@ -73,6 +73,7 @@ make test
 | Cluster node discovery via etcd | ✅ |
 | TLS support (AMQP over TLS + mTLS) | ✅ |
 | Prometheus metrics export | ✅ |
+| Memory pool & batching (performance) | 🔄 |
 | Mirrored Queue (HA Queue) | ✅ |
 | Plugin System | ✅ |
 | Federation / Shovel | ✅ |

@@ -73,6 +73,7 @@ make test
 | 集群节点发现（etcd） | ✅ |
 | TLS 支持（AMQP over TLS + mTLS） | ✅ |
 | Prometheus 指标导出 | ✅ |
+| 内存池与批处理（性能优化） | 🔄 |
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |
