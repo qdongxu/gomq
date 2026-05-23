@@ -13,6 +13,7 @@ func RegisterBasicHandlers(
 	reg *SimpleRegistry,
 	srv *Server,
 ) {
+	RegisterChannelHandlers(reg, srv)
 	reg.Register(10, 50, handleConnectionClose(srv))
 	reg.Register(20, 20, handleChannelFlow(srv))
 	reg.Register(20, 40, handleChannelClose(srv))
