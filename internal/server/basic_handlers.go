@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/qdongxu/gomq/internal/auth"
 	"github.com/qdongxu/gomq/pkg/protocol/amqp091"
 )
 
@@ -89,6 +90,16 @@ func handleConsume(srv *Server) MethodHandler {
 		queue, err := dec.ReadShortString()
 		if err != nil {
 			return err
+		}
+
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResQueue, queue,
+				auth.PermRead,
+			); err != nil {
+				return err
+			}
 		}
 
 		tag, err := dec.ReadShortString()
@@ -176,6 +187,16 @@ func handlePublish(srv *Server) MethodHandler {
 		exchange, err := dec.ReadShortString()
 		if err != nil {
 			return err
+		}
+
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResExchange, exchange,
+				auth.PermWrite,
+			); err != nil {
+				return err
+			}
 		}
 
 		routingKey, err := dec.ReadShortString()
@@ -386,6 +407,16 @@ func handleGet(srv *Server) MethodHandler {
 			return err
 		}
 
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResQueue, queue,
+				auth.PermRead,
+			); err != nil {
+				return err
+			}
+		}
+
 		bits, err := dec.ReadUint8()
 		if err != nil {
 			return err
@@ -542,6 +573,16 @@ func handleQueueDeclare(srv *Server) MethodHandler {
 			return err
 		}
 
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResQueue, queue,
+				auth.PermConfigure,
+			); err != nil {
+				return err
+			}
+		}
+
 		bits, err := dec.ReadUint8()
 		if err != nil {
 			return err
@@ -605,6 +646,16 @@ func handleQueueBind(srv *Server) MethodHandler {
 			return err
 		}
 
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResQueue, queue,
+				auth.PermConfigure,
+			); err != nil {
+				return err
+			}
+		}
+
 		routingKey, err := dec.ReadShortString()
 		if err != nil {
 			return err
@@ -650,6 +701,16 @@ func handleQueueDelete(srv *Server) MethodHandler {
 			return err
 		}
 
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResQueue, queue,
+				auth.PermConfigure,
+			); err != nil {
+				return err
+			}
+		}
+
 		bits, err := dec.ReadUint8()
 		if err != nil {
 			return err
@@ -689,6 +750,16 @@ func handleQueuePurge(srv *Server) MethodHandler {
 			return err
 		}
 
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResQueue, queue,
+				auth.PermConfigure,
+			); err != nil {
+				return err
+			}
+		}
+
 		bits, err := dec.ReadUint8()
 		if err != nil {
 			return err
@@ -724,6 +795,16 @@ func handleQueueUnbind(srv *Server) MethodHandler {
 		queue, err := dec.ReadShortString()
 		if err != nil {
 			return err
+		}
+
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResQueue, queue,
+				auth.PermConfigure,
+			); err != nil {
+				return err
+			}
 		}
 
 		exchange, err := dec.ReadShortString()
@@ -767,6 +848,16 @@ func handleExchangeDeclare(srv *Server) MethodHandler {
 		exchange, err := dec.ReadShortString()
 		if err != nil {
 			return err
+		}
+
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResExchange, exchange,
+				auth.PermConfigure,
+			); err != nil {
+				return err
+			}
 		}
 
 		exType, err := dec.ReadShortString()
@@ -839,6 +930,16 @@ func handleExchangeDelete(srv *Server) MethodHandler {
 			return err
 		}
 
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResExchange, exchange,
+				auth.PermConfigure,
+			); err != nil {
+				return err
+			}
+		}
+
 		bits, err := dec.ReadUint8()
 		if err != nil {
 			return err
@@ -880,6 +981,16 @@ func handleExchangeBind(srv *Server) MethodHandler {
 		source, err := dec.ReadShortString()
 		if err != nil {
 			return err
+		}
+
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResExchange, destination,
+				auth.PermConfigure,
+			); err != nil {
+				return err
+			}
 		}
 
 		routingKey, err := dec.ReadShortString()
@@ -938,6 +1049,16 @@ func handleExchangeUnbind(srv *Server) MethodHandler {
 		source, err := dec.ReadShortString()
 		if err != nil {
 			return err
+		}
+
+		if mgr := srv.ACLManager(); mgr != nil {
+			if err := mgr.Check(
+				ch.conn.Username(), ch.conn.VHost(),
+				auth.ResExchange, destination,
+				auth.PermConfigure,
+			); err != nil {
+				return err
+			}
 		}
 
 		routingKey, err := dec.ReadShortString()

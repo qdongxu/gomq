@@ -15,6 +15,7 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 
+	"github.com/qdongxu/gomq/internal/auth"
 	"github.com/qdongxu/gomq/internal/cluster"
 	"github.com/qdongxu/gomq/internal/config"
 	"github.com/qdongxu/gomq/internal/metrics"
@@ -49,6 +50,23 @@ func main() {
 	}
 
 	srv := server.NewServerWithStore(metaStore)
+
+	// Load ACL rules if any are configured.
+	if len(cfg.ACL.Rules) > 0 {
+		rules := make([]auth.Rule, 0, len(cfg.ACL.Rules))
+		for _, r := range cfg.ACL.Rules {
+			rules = append(rules, auth.Rule{
+				User:         r.User,
+				VHost:        r.VHost,
+				ResourceType: auth.ResourceType(r.ResourceType),
+				ResourceName: r.ResourceName,
+				Permission:   auth.Permission(r.Permission),
+				Allow:        r.Allow,
+			})
+		}
+		srv.SetACLManager(auth.NewACLManager(rules))
+		log.Printf("acl: loaded %d rules", len(rules))
+	}
 
 	if metaStore != nil {
 		ctx, cancel := context.WithTimeout(

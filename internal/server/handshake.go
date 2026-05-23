@@ -144,6 +144,7 @@ func (h *Handshaker) readStartOk() error {
 	if err := h.auth.Authenticate(parts[1], parts[2]); err != nil {
 		return err
 	}
+	h.conn.setUsername(parts[1])
 	return nil
 }
 
@@ -188,6 +189,7 @@ func (h *Handshaker) readTuneOk() error {
 
 // sendOpen sends Connection.Open with virtual host "/".
 func (h *Handshaker) sendOpen() error {
+	h.conn.setVHost("/")
 	enc := amqp091.NewEncoder()
 	enc.WriteUint16(10) // Connection class
 	enc.WriteUint16(40) // Open method

@@ -37,6 +37,8 @@ type Connection struct {
 	server     *Server
 	heartbeat  int // negotiated heartbeat interval
 	registry   *SimpleRegistry
+	username   string // authenticated user
+	vhost      string // negotiated virtual host
 }
 
 // NewConnection creates a Connection from an accepted net.Conn.
@@ -235,6 +237,34 @@ func (c *Connection) ChannelCount() int {
 		return 0
 	}
 	return c.channelMgr.Count()
+}
+
+// Username returns the authenticated username.
+func (c *Connection) Username() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.username
+}
+
+// VHost returns the negotiated virtual host.
+func (c *Connection) VHost() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.vhost
+}
+
+// setUsername stores the authenticated username.
+func (c *Connection) setUsername(u string) {
+	c.mu.Lock()
+	c.username = u
+	c.mu.Unlock()
+}
+
+// setVHost stores the negotiated virtual host.
+func (c *Connection) setVHost(v string) {
+	c.mu.Lock()
+	c.vhost = v
+	c.mu.Unlock()
 }
 
 // HeartbeatInterval returns the negotiated heartbeat interval.

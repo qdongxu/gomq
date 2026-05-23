@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qdongxu/gomq/internal/auth"
 	"github.com/qdongxu/gomq/internal/cluster"
 	"github.com/qdongxu/gomq/internal/metrics"
 	"github.com/qdongxu/gomq/internal/store"
@@ -43,6 +44,7 @@ type Server struct {
 	plugins     *PluginManager
 	federations *FederationManager
 	shovels     *ShovelManager
+	aclMgr      *auth.ACLManager
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -353,6 +355,20 @@ func (s *Server) Metrics() metrics.Collector {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.metrics
+}
+
+// SetACLManager configures the ACL manager for the server.
+func (s *Server) SetACLManager(m *auth.ACLManager) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.aclMgr = m
+}
+
+// ACLManager returns the current ACL manager (may be nil).
+func (s *Server) ACLManager() *auth.ACLManager {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.aclMgr
 }
 
 // StartTime returns when the server was created.
