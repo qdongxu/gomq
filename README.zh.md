@@ -4,37 +4,176 @@
 目标是用 Go 完整实现 RabbitMQ 服务端功能，
 使用嵌入式 etcd 持久化，htmx 构建 Web 管理端。
 
-## 配置
+## 系统要求
 
-gomq 使用 TOML 配置文件。参见 `configs/gomq.default.toml` 了解所有
-可用选项。环境变量可通过 `GOMQ_` 前缀覆盖文件值
-（例如 `GOMQ_NETWORK_HEARTBEAT=30`）。
+- **Go** 1.25 或更高版本
+- **etcd** 3.5+（可选，用于集群持久化）
+- **Make**（可选，用于便捷命令）
 
 ## 快速开始
 
 ```bash
+# 克隆仓库
+git clone https://github.com/qdongxu/gomq.git
+cd gomq
+
 # 编译
 make build
 
-# 运行
+# 使用默认配置运行
 ./bin/gomqd -config configs/gomq.default.toml
 
-# 测试
+# 运行测试
 make test
 ```
 
+服务器默认监听 **5672**（AMQP）和 **15672**（Web 管理端）。
+
+## 安装
+
+### 从源码安装
+
+```bash
+go install github.com/qdongxu/gomq/cmd/gomqd@latest
+```
+
+### 二进制发行版
+
+从 [Releases](https://github.com/qdongxu/gomq/releases) 页面下载预编译二进制文件。
+
+## 配置
+
+gomq 使用 **TOML** 配置文件。参见 `configs/gomq.default.toml` 获取完整示例。
+
+### 环境变量覆盖
+
+任何配置值都可通过环境变量覆盖，使用 `GOMQ_` 前缀和下划线分隔的路径：
+
+```bash
+GOMQ_NETWORK_HEARTBEAT=30
+GOMQ_TLS_ENABLED=true
+GOMQ_TLS_CERT_FILE=/etc/gomq/server.crt
+```
+
+### 最小配置
+
+```toml
+[network]
+listeners = ["0.0.0.0:5672"]
+heartbeat = 60
+
+[log]
+level = "info"
+output = "stdout"
+```
+
+### TLS 配置
+
+```toml
+[tls]
+enabled = true
+cert_file = "/etc/gomq/server.crt"
+key_file  = "/etc/gomq/server.key"
+
+# 可选：双向 TLS（客户端证书验证）
+ca_file       = "/etc/gomq/ca.crt"
+verify_client = true
+```
+
+启用 TLS 后，gomq 在 **5671** 端口监听（或 `network.listeners` 的第二个地址）。
+
+### 集群配置
+
+```toml
+[cluster]
+node_id = "node-1"
+discovery = "etcd"
+etcd_endpoints = ["http://localhost:2379"]
+```
+
+静态发现（无需 etcd）：
+
+```toml
+[cluster]
+node_id = "node-1"
+discovery = "static"
+nodes = ["node-2@192.168.1.10:5672", "node-3@192.168.1.11:5672"]
+```
+
+### Prometheus 指标
+
+```toml
+[metrics]
+enabled = true
+listen = "0.0.0.0:15692"
+```
+
+指标以 Prometheus 格式暴露在 `http://<listen>/metrics`。
+
+### ACL（访问控制）
+
+```toml
+[[acl.rules]]
+user = "admin"
+vhost = "/"
+resource_type = "*"
+resource_name = "*"
+permission = "*"
+allow = true
+
+[[acl.rules]]
+user = "guest"
+vhost = "/"
+resource_type = "exchange"
+resource_name = "amq.*"
+permission = "write"
+allow = true
+
+[[acl.rules]]
+user = "*"
+vhost = "*"
+resource_type = "*"
+resource_name = "*"
+permission = "*"
+allow = false
+```
+
+规则按**顺序**评估，首条匹配规则生效。无匹配规则时默认拒绝。
+
+| 权限 | 对应 AMQP 操作 |
+|------|---------------|
+| `configure` | Exchange.Declare/Delete/Bind/Unbind, Queue.Declare/Bind/Delete/Purge/Unbind |
+| `write` | Basic.Publish |
+| `read` | Basic.Consume, Basic.Get |
+
+### Web 管理端
+
+```toml
+[web]
+enabled = true
+listen = "0.0.0.0:15672"
+path_prefix = "/"
+```
+
+管理端基于 **htmx** 构建，提供连接、信道、交换机、队列、绑定和管理控制的实时视图。
+
 ## 项目结构
 
-- `cmd/gomqd/` — 服务端入口
-- `internal/server/` — AMQP 连接、信道、交换机、队列核心逻辑
-- `internal/store/` — etcd 持久化封装
-- `internal/config/` — TOML 配置解析
-- `internal/web/` — htmx 管理端
-- `internal/cluster/` — 集群与节点管理
-- `pkg/protocol/amqp091/` — AMQP 0-9-1 协议帧编解码
-- `test/integration/` — 集成测试
+| 路径 | 说明 |
+|------|------|
+| `cmd/gomqd/` | 服务端入口 |
+| `internal/server/` | AMQP 连接、信道、交换机、队列核心 |
+| `internal/auth/` | ACL 规则引擎 |
+| `internal/store/` | etcd 与内存持久化后端 |
+| `internal/config/` | TOML 配置解析 |
+| `internal/web/` | htmx 管理端 |
+| `internal/cluster/` | 集群、节点发现、Raft 仲裁队列 |
+| `internal/metrics/` | Prometheus 指标收集器 |
+| `internal/queue/` | 队列实现（内存、仲裁） |
+| `pkg/protocol/amqp091/` | AMQP 0-9-1 协议帧编解码 |
+| `test/integration/` | 集成测试 |
 
-## 状态
+## 功能状态
 
 | 功能 | 状态 |
 |---------|--------|
@@ -80,7 +219,32 @@ make test
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |
 
-开发中 — 文档和功能随代码实现持续更新。
+## 开发
+
+```bash
+# 格式化代码
+make fmt
+
+# 运行静态检查
+make lint
+
+# 清理构建产物
+make clean
+```
+
+### 运行集成测试
+
+```bash
+# 先启动本地 etcd 实例，然后：
+go test ./test/integration/...
+```
+
+## 贡献
+
+1. Fork 本仓库
+2. 创建功能分支：`git checkout -b feat/your-feature`
+3. 提交更改（遵循 [Conventional Commits](https://www.conventionalcommits.org/)）
+4. 推送到你的 fork 并创建 Pull Request
 
 ## 许可证
 

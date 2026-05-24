@@ -45,6 +45,35 @@ path_prefix = "/"
 [auth]
 # Placeholder for authentication settings.
 
+[acl]
+# Access Control List rules.  Evaluated in order; first match wins.
+# Wildcard "*" is supported in user, vhost, resource_type,
+# resource_name and permission fields.
+#
+# [[acl.rules]]
+# user = "admin"
+# vhost = "/"
+# resource_type = "*"
+# resource_name = "*"
+# permission = "*"
+# allow = true
+#
+# [[acl.rules]]
+# user = "guest"
+# vhost = "/"
+# resource_type = "exchange"
+# resource_name = "amq.*"
+# permission = "write"
+# allow = true
+#
+# [[acl.rules]]
+# user = "*"
+# vhost = "*"
+# resource_type = "*"
+# resource_name = "*"
+# permission = "*"
+# allow = false
+
 [tls]
 # TLS/SSL configuration for encrypted AMQP connections.
 # When enabled, gomq listens on a second port (default 5671) for TLS.
