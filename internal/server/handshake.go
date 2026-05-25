@@ -8,6 +8,7 @@ import (
 	"net"
 	"time"
 
+	saslauth "github.com/qdongxu/gomq/internal/auth"
 	"github.com/qdongxu/gomq/pkg/protocol/amqp091"
 )
 
@@ -20,6 +21,7 @@ var protocolHeader = []byte{
 type Handshaker struct {
 	conn   *Connection
 	auth   Authenticator
+	sasl   *saslauth.Registry
 	tune   *amqpTuneParams
 }
 
@@ -30,14 +32,19 @@ type amqpTuneParams struct {
 }
 
 // NewHandshaker creates a handshaker for the given connection and
-// authenticator.
+// authenticator.  It automatically registers PLAIN (via the existing
+// Authenticator), AMQPLAIN, and EXTERNAL SASL mechanisms.
 func NewHandshaker(
 	conn *Connection,
 	auth Authenticator,
 ) *Handshaker {
+	reg := saslauth.NewSASLRegistry()
+	reg.Register(saslauth.NewAMQPLAIN())
+	reg.Register(saslauth.NewEXTERNAL())
 	return &Handshaker{
 		conn: conn,
 		auth: auth,
+		sasl: reg,
 		tune: &amqpTuneParams{
 			channelMax: 2048,
 			frameMax:   131072,
@@ -88,12 +95,8 @@ func (h *Handshaker) readProtocolHeader() error {
 	return nil
 }
 
-// sendStart sends Connection.Start with PLAIN mechanism.
+// sendStart sends Connection.Start with registered SASL mechanisms.
 func (h *Handshaker) sendStart() error {
-	// Minimal Connection.Start frame (class 10, method 10)
-	// Encoding: class-id (uint16), method-id (uint16), version-major,
-	// version-minor, server-properties (table), mechanisms (longstr),
-	// locales (longstr)
 	enc := amqp091.NewEncoder()
 	enc.WriteUint16(10)  // Connection class
 	enc.WriteUint16(10)  // Start method
@@ -103,13 +106,14 @@ func (h *Handshaker) sendStart() error {
 		"product": "gomq",
 		"version": "0.1.0",
 	})
-	enc.WriteString("PLAIN AMQPLAIN")
+	enc.WriteString(h.sasl.Names())
 	enc.WriteString("en_US")
 
 	return h.conn.sendMethodFrame(0, enc.Bytes())
 }
 
-// readStartOk reads Connection.Start-Ok and validates credentials.
+// readStartOk reads Connection.Start-Ok and validates credentials via
+// the chosen SASL mechanism.
 func (h *Handshaker) readStartOk() error {
 	f, err := h.conn.readFrame()
 	if err != nil {
@@ -129,22 +133,34 @@ func (h *Handshaker) readStartOk() error {
 	// Skip client-properties table
 	_, _ = dec.ReadTable()
 	mechanism, _ := dec.ReadString()
-	if mechanism != "PLAIN" {
+	response, _ := dec.ReadString()
+
+	// Special-case the legacy PLAIN mechanism backed by Authenticator.
+	if mechanism == "PLAIN" {
+		if len(response) < 3 {
+			return ErrAuthFailed
+		}
+		parts := splitNull(response)
+		if len(parts) < 3 {
+			return ErrAuthFailed
+		}
+		if err := h.auth.Authenticate(parts[1], parts[2]); err != nil {
+			return err
+		}
+		h.conn.setUsername(parts[1])
+		return nil
+	}
+
+	// Delegate to registered SASL mechanism.
+	m := h.sasl.Lookup(mechanism)
+	if m == nil {
 		return fmt.Errorf("unsupported mechanism %q", mechanism)
 	}
-	response, _ := dec.ReadString()
-	// PLAIN response: \x00username\x00password
-	if len(response) < 3 {
+	user, err := m.Response(h.conn.raw, []byte(response))
+	if err != nil {
 		return ErrAuthFailed
 	}
-	parts := splitNull(response)
-	if len(parts) < 3 {
-		return ErrAuthFailed
-	}
-	if err := h.auth.Authenticate(parts[1], parts[2]); err != nil {
-		return err
-	}
-	h.conn.setUsername(parts[1])
+	h.conn.setUsername(user)
 	return nil
 }
 

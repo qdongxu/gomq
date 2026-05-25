@@ -146,6 +146,33 @@ allow = false
 | `write` | Basic.Publish |
 | `read` | Basic.Consume, Basic.Get |
 
+### SASL 认证
+
+gomq 在 AMQP 连接启动阶段支持三种 SASL 机制：
+
+| 机制 | 说明 | 前置条件 |
+|------|------|---------|
+| `PLAIN` | 用户名/密码（默认） | 无 |
+| `AMQPLAIN` | RabbitMQ 兼容的用户名/密码 | 无 |
+| `EXTERNAL` | 以 TLS 客户端证书 CN 作为身份 | 双向 TLS |
+
+服务端在 `Connection.Start` 帧中通告所有可用机制，客户端在
+`Connection.Start-Ok` 中选择其一。
+
+**EXTERNAL** 从对等 TLS 证书的 CommonName 提取用户名：
+
+```toml
+[tls]
+enabled       = true
+cert_file     = "/etc/gomq/server.crt"
+key_file      = "/etc/gomq/server.key"
+ca_file       = "/etc/gomq/ca.crt"
+verify_client = true   # EXTERNAL 必需
+```
+
+客户端出示有效证书且 CN 为 `alice` 时，即认证为用户 `alice`，
+无需发送密码。
+
 ### Web 管理端
 
 ```toml
@@ -163,7 +190,7 @@ path_prefix = "/"
 |------|------|
 | `cmd/gomqd/` | 服务端入口 |
 | `internal/server/` | AMQP 连接、信道、交换机、队列核心 |
-| `internal/auth/` | ACL 规则引擎 |
+| `internal/auth/` | ACL 规则引擎 **+ SASL 认证机制** |
 | `internal/store/` | etcd 与内存持久化后端 |
 | `internal/config/` | TOML 配置解析 |
 | `internal/web/` | htmx 管理端 |
@@ -215,6 +242,7 @@ path_prefix = "/"
 | 内存池与批处理（性能优化） | ✅ |
 | Channel.Recover 及边缘方法 | ✅ |
 | ACL（访问控制列表）——虚拟主机级权限 | ✅ |
+| **SASL 认证（PLAIN / AMQPLAIN / EXTERNAL）** | ✅ |
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |
