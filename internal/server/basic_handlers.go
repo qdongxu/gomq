@@ -16,8 +16,10 @@ func RegisterBasicHandlers(
 ) {
 	RegisterChannelHandlers(reg, srv)
 	reg.Register(10, 50, handleConnectionClose(srv))
+	reg.Register(10, 51, handleConnectionCloseOk(srv))
 	reg.Register(20, 20, handleChannelFlow(srv))
 	reg.Register(20, 40, handleChannelClose(srv))
+	reg.Register(20, 41, handleChannelCloseOk(srv))
 	reg.Register(60, 10, handleQos(srv))
 	reg.Register(60, 20, handleConsume(srv))
 	reg.Register(60, 30, handleCancel(srv))
@@ -1188,6 +1190,30 @@ func handleChannelClose(srv *Server) MethodHandler {
 
 		// Close the channel
 		ch.Close()
+		return nil
+	}
+}
+
+// handleConnectionCloseOk is invoked when the client acknowledges a
+// Connection.Close initiated by the server.  It performs no-op
+// because the server side has already closed the connection.
+func handleConnectionCloseOk(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		// Connection.CloseOk carries no arguments.
+		// The server has already initiated the close; this is the
+		// client acknowledgement.  Nothing further to do.
+		return nil
+	}
+}
+
+// handleChannelCloseOk is invoked when the client acknowledges a
+// Channel.Close initiated by the server.  It performs no-op because
+// the server side has already closed the channel.
+func handleChannelCloseOk(srv *Server) MethodHandler {
+	return func(ch *Channel, payload []byte) error {
+		// Channel.CloseOk carries no arguments.
+		// The server has already initiated the close; this is the
+		// client acknowledgement.  Nothing further to do.
 		return nil
 	}
 }
