@@ -146,6 +146,33 @@ Rules are evaluated **in order**; the first match wins. If no rule matches, acce
 | `write` | Basic.Publish |
 | `read` | Basic.Consume, Basic.Get |
 
+### SASL Authentication
+
+gomq supports three SASL mechanisms during AMQP connection startup:
+
+| Mechanism | Description | Requirements |
+|-----------|-------------|--------------|
+| `PLAIN` | Username/password (default) | None |
+| `AMQPLAIN` | RabbitMQ-compatible username/password | None |
+| `EXTERNAL` | TLS client certificate CN as identity | TLS with mutual auth |
+
+The server advertises all available mechanisms in `Connection.Start`.  The
+client selects one in `Connection.Start-Ok`.
+
+**EXTERNAL** extracts the CommonName from the peer's TLS certificate:
+
+```toml
+[tls]
+enabled       = true
+cert_file     = "/etc/gomq/server.crt"
+key_file      = "/etc/gomq/server.key"
+ca_file       = "/etc/gomq/ca.crt"
+verify_client = true   # required for EXTERNAL
+```
+
+Clients presenting a valid certificate with CN `alice` will be
+authenticated as user `alice` without sending a password.
+
 ### Web UI
 
 ```toml
@@ -163,7 +190,7 @@ The management UI is built with **htmx** and provides real-time views of connect
 |------|-------------|
 | `cmd/gomqd/` | Server entry point |
 | `internal/server/` | AMQP connection, channel, exchange, queue core |
-| `internal/auth/` | ACL rule engine |
+| `internal/auth/` | ACL rule engine **+ SASL mechanisms** |
 | `internal/store/` | etcd and memory persistence backends |
 | `internal/config/` | TOML configuration parser |
 | `internal/web/` | htmx management UI |
@@ -215,6 +242,7 @@ The management UI is built with **htmx** and provides real-time views of connect
 | Memory pool & batching (performance) | ✅ |
 | Channel.Recover and edge methods | ✅ |
 | ACL (Access Control List) — vhost-level permissions | ✅ |
+| **SASL authentication (PLAIN / AMQPLAIN / EXTERNAL)** | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
 | Plugin System | ✅ |
 | Federation / Shovel | ✅ |
