@@ -287,6 +287,8 @@ The management UI is built with **htmx** and provides real-time views of connect
 | **SASL authentication (PLAIN / AMQPLAIN / EXTERNAL)** | ✅ |
 | **Memory compression & paging (zlib, disk overflow)** | ✅ |
 | **Rate limiting & backpressure** | ✅ |
+| **Connection.CloseOk / Channel.CloseOk handlers** | ✅ |
+| **Basic.Reject (requeue + no-requeue + DLX)** | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
 | Plugin System | ✅ |
 | Federation / Shovel | ✅ |

@@ -281,6 +281,8 @@ path_prefix = "/"
 | **SASL 认证（PLAIN / AMQPLAIN / EXTERNAL）** | ✅ |
 | **消息存储压缩与分页（zlib，磁盘溢出）** | ✅ |
 | **速率限制与背压控制** | ✅ |
+| **Connection.CloseOk / Channel.CloseOk 处理器** | ✅ |
+| **Basic.Reject（重新入队 + 丢弃 + DLX）** | ✅ |
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |

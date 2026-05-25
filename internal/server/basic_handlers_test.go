@@ -999,3 +999,146 @@ func TestBasicQosGlobal(t *testing.T) {
 		t.Fatal("global limit should allow after ack")
 	}
 }
+
+// encodeConnectionCloseOk builds a Connection.CloseOk method payload.
+func encodeConnectionCloseOk() []byte {
+	// Connection.CloseOk has no arguments.
+	return []byte{}
+}
+
+// encodeChannelCloseOk builds a Channel.CloseOk method payload.
+func encodeChannelCloseOk() []byte {
+	// Channel.CloseOk has no arguments.
+	return []byte{}
+}
+
+// TestConnectionCloseOk handles the client's CloseOk reply.
+func TestConnectionCloseOk(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	// Simulate server sending Connection.Close first.
+	_ = conn.Close()
+
+	// Client replies with CloseOk.
+	payload := encodeConnectionCloseOk()
+	handler, _ := reg.Lookup(10, 51)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("close-ok: %v", err)
+	}
+	// Connection is already closed; handler is no-op.
+	if conn.State() != StateClosed {
+		t.Fatalf("state = %d, want StateClosed", conn.State())
+	}
+}
+
+// TestChannelCloseOk handles the client's CloseOk reply.
+func TestChannelCloseOk(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	// Simulate server sending Channel.Close first.
+	ch.Close()
+
+	// Client replies with CloseOk.
+	payload := encodeChannelCloseOk()
+	handler, _ := reg.Lookup(20, 41)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("close-ok: %v", err)
+	}
+	// Channel is already closed; handler is no-op.
+	if ch.State() != ChanClosed {
+		t.Fatalf("state = %d, want ChanClosed", ch.State())
+	}
+}
+
+// TestBasicRejectRequeue returns a rejected delivery to its queue.
+func TestBasicRejectRequeue(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	srv.MessageStore().Enqueue("q1", NewMessage([]byte("reject-requeue"), Properties{}))
+	pc := NewPullConsumer(srv.MessageStore(), srv.DeliveryTracker())
+	msg, _ := pc.Get("q1", false, 1)
+
+	if srv.DeliveryTracker().Count() != 1 {
+		t.Fatalf("tracker = %d, want 1", srv.DeliveryTracker().Count())
+	}
+
+	// Requeue the message.
+	payload := encodeReject(msg.DeliveryTag(), true)
+	handler, _ := reg.Lookup(60, 90)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("reject requeue: %v", err)
+	}
+	if srv.DeliveryTracker().Count() != 0 {
+		t.Fatalf("tracker = %d, want 0", srv.DeliveryTracker().Count())
+	}
+
+	// Message should be back in the queue.
+	msg2, _ := pc.Get("q1", false, 1)
+	if string(msg2.Payload()) != "reject-requeue" {
+		t.Fatalf("payload = %q, want reject-requeue", msg2.Payload())
+	}
+}
+
+// TestBasicRejectNoRequeueDLX routes a rejected delivery to DLX.
+func TestBasicRejectNoRequeueDLX(t *testing.T) {
+	srv := NewServer()
+	reg := NewSimpleRegistry()
+	RegisterBasicHandlers(reg, srv)
+
+	auth := NewMemoryAuthenticator()
+	conn := NewConnection(nil, auth, srv)
+	ch, _ := NewChannelManager(10).Create(1, conn)
+	ch.Open()
+
+	// Create a queue with dead-letter exchange.
+	_, _ = srv.ExchangeManager().Declare("dlx", ExchangeDirect, false, false, false, nil)
+	_, _ = srv.QueueManager().Declare("q-dlx", false, false, false, map[string]interface{}{
+		"x-dead-letter-exchange": "dlx",
+	}, conn)
+	_, _ = srv.BindingManager().Bind("dlx", "q-dlx", "", nil)
+
+	srv.MessageStore().Enqueue("q-dlx", NewMessage([]byte("dlx-msg"), Properties{}))
+	pc := NewPullConsumer(srv.MessageStore(), srv.DeliveryTracker())
+	msg, _ := pc.Get("q-dlx", false, 1)
+
+	if srv.DeliveryTracker().Count() != 1 {
+		t.Fatalf("tracker = %d, want 1", srv.DeliveryTracker().Count())
+	}
+
+	// Reject without requeue → DLX.
+	payload := encodeReject(msg.DeliveryTag(), false)
+	handler, _ := reg.Lookup(60, 90)
+	if err := handler(ch, payload); err != nil {
+		t.Fatalf("reject no-requeue: %v", err)
+	}
+	if srv.DeliveryTracker().Count() != 0 {
+		t.Fatalf("tracker = %d, want 0", srv.DeliveryTracker().Count())
+	}
+
+	// Message should be routed to DLX → q-dlx.
+	msg2, _ := pc.Get("q-dlx", false, 1)
+	if string(msg2.Payload()) != "dlx-msg" {
+		t.Fatalf("payload = %q, want dlx-msg", msg2.Payload())
+	}
+}
