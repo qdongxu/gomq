@@ -101,3 +101,11 @@ listen  = "0.0.0.0:15692"
 compression_threshold  = 0
 max_in_memory_messages = 0
 page_dir               = "/var/lib/gomq/pages"
+
+[limits]
+# Rate limiting and backpressure settings.
+# max_connections_per_second = 0 disables rate limiting.
+# memory_threshold_percent = 0 disables backpressure.
+max_connections_per_second = 0
+memory_threshold_percent   = 0
+backpressure_enabled       = false

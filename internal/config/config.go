@@ -57,6 +57,13 @@ type Memory struct {
 	PageDir              string `toml:"page_dir"` // directory for overflow page files
 }
 
+// Limits holds rate limiting and backpressure settings.
+type Limits struct {
+	MaxConnectionsPerSecond float64 `toml:"max_connections_per_second"` // 0 = no limit
+	MemoryThresholdPercent  float64 `toml:"memory_threshold_percent"`   // 0 = no backpressure
+	BackPressureEnabled     bool    `toml:"backpressure_enabled"`       // master switch
+}
+
 // Auth is a placeholder for authentication settings.
 // Real implementation will be added in a later Issue.
 type Auth struct {
@@ -89,6 +96,7 @@ type Config struct {
 	TLS     TLS     `toml:"tls"`
 	Metrics Metrics `toml:"metrics"`
 	Memory  Memory  `toml:"memory"`
+	Limits  Limits  `toml:"limits"`
 }
 
 // Default returns a Config populated with safe defaults.
