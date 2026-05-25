@@ -45,6 +45,8 @@ type Server struct {
 	federations *FederationManager
 	shovels     *ShovelManager
 	aclMgr      *auth.ACLManager
+	rateLimiter *RateLimiter
+	backPressure *BackPressure
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -235,6 +237,19 @@ func (s *Server) serveListener(l net.Listener) error {
 			}
 			return err
 		}
+
+		// Rate limiting.
+		if s.rateLimiter != nil && !s.rateLimiter.Allow() {
+			_ = conn.Close()
+			continue
+		}
+
+		// Backpressure check.
+		if s.backPressure != nil && !s.backPressure.CanAccept() {
+			_ = conn.Close()
+			continue
+		}
+
 		s.wg.Add(1)
 		go s.handleConn(conn)
 	}
@@ -376,4 +391,18 @@ func (s *Server) StartTime() time.Time {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.startTime
+}
+
+// SetRateLimiter configures the connection rate limiter.
+func (s *Server) SetRateLimiter(rl *RateLimiter) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rateLimiter = rl
+}
+
+// SetBackPressure configures the memory backpressure controller.
+func (s *Server) SetBackPressure(bp *BackPressure) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.backPressure = bp
 }

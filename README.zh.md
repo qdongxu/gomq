@@ -192,6 +192,23 @@ page_dir = "/var/lib/gomq/pages"
 **压缩**启用后，超过阈值的消息在入队时自动压缩、出队时解压。
 **分页**启用后，当队列消息数超过内存上限时，旧消息被刷到磁盘页文件；可随时加载回内存。
 
+### 速率限制与背压控制
+
+```toml
+[limits]
+# 每秒最大新建连接数。0 = 无限制。
+max_connections_per_second = 100
+
+# 触发背压控制的内存使用百分比阈值。0 = 关闭。
+memory_threshold_percent = 80
+
+# 背压控制总开关。
+backpressure_enabled = true
+```
+
+**令牌桶速率限制器**在突发流量耗尽时拒绝新连接。
+**背压控制**监控堆内存，超过阈值后拒绝新连接，并可能向发布者发送 `Channel.Flow`（暂停）。
+
 ### Web 管理端
 
 ```toml
@@ -263,6 +280,7 @@ path_prefix = "/"
 | ACL（访问控制列表）——虚拟主机级权限 | ✅ |
 | **SASL 认证（PLAIN / AMQPLAIN / EXTERNAL）** | ✅ |
 | **消息存储压缩与分页（zlib，磁盘溢出）** | ✅ |
+| **速率限制与背压控制** | ✅ |
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |

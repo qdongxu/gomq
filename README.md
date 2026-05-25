@@ -195,6 +195,26 @@ dequeue.  When **paging** is enabled, older messages are flushed to
 page files when a queue exceeds the in-memory limit; they can be
 reloaded on demand.
 
+### Rate Limiting & Backpressure
+
+```toml
+[limits]
+# Maximum new connections per second.  0 = unlimited.
+max_connections_per_second = 100
+
+# Memory-usage percentage that triggers backpressure.
+# 0 = disabled.
+memory_threshold_percent = 80
+
+# Master switch for backpressure control.
+backpressure_enabled = true
+```
+
+The **token-bucket rate limiter** rejects connections when the burst
+is exhausted.  **Backpressure** monitors heap memory; when it exceeds
+the threshold, new connections are refused and publishers may receive
+`Channel.Flow` (pause).
+
 ### Web UI
 
 ```toml
@@ -266,6 +286,7 @@ The management UI is built with **htmx** and provides real-time views of connect
 | ACL (Access Control List) — vhost-level permissions | ✅ |
 | **SASL authentication (PLAIN / AMQPLAIN / EXTERNAL)** | ✅ |
 | **Memory compression & paging (zlib, disk overflow)** | ✅ |
+| **Rate limiting & backpressure** | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
 | Plugin System | ✅ |
 | Federation / Shovel | ✅ |
