@@ -50,6 +50,13 @@ type Metrics struct {
 		// e.g. "0.0.0.0:15692"
 }
 
+// Memory holds message-store tuning settings.
+type Memory struct {
+	CompressionThreshold int    `toml:"compression_threshold"` // min payload bytes to compress, 0=off
+	MaxInMemoryMessages  int    `toml:"max_in_memory_messages"` // max messages per queue before paging, 0=off
+	PageDir              string `toml:"page_dir"` // directory for overflow page files
+}
+
 // Auth is a placeholder for authentication settings.
 // Real implementation will be added in a later Issue.
 type Auth struct {
@@ -81,6 +88,7 @@ type Config struct {
 	ACL     ACL     `toml:"acl"`
 	TLS     TLS     `toml:"tls"`
 	Metrics Metrics `toml:"metrics"`
+	Memory  Memory  `toml:"memory"`
 }
 
 // Default returns a Config populated with safe defaults.
@@ -104,6 +112,11 @@ func Default() *Config {
 			Enabled:    true,
 			Listen:     "0.0.0.0:15672",
 			PathPrefix: "/",
+		},
+		Memory: Memory{
+			CompressionThreshold: 0,
+			MaxInMemoryMessages:  0,
+			PageDir:              "/var/lib/gomq/pages",
 		},
 	}
 }
