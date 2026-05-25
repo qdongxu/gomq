@@ -173,6 +173,25 @@ verify_client = true   # EXTERNAL 必需
 客户端出示有效证书且 CN 为 `alice` 时，即认证为用户 `alice`，
 无需发送密码。
 
+### 内存优化
+
+```toml
+[memory]
+# 触发 zlib 压缩的最小 payload 大小（字节）。
+# 0 = 关闭。
+compression_threshold = 1024
+
+# 单个队列在内存中保留的最大消息数，超过后刷到磁盘。
+# 0 = 关闭。
+max_in_memory_messages = 10000
+
+# 磁盘页文件存放目录。
+page_dir = "/var/lib/gomq/pages"
+```
+
+**压缩**启用后，超过阈值的消息在入队时自动压缩、出队时解压。
+**分页**启用后，当队列消息数超过内存上限时，旧消息被刷到磁盘页文件；可随时加载回内存。
+
 ### Web 管理端
 
 ```toml
@@ -243,6 +262,7 @@ path_prefix = "/"
 | Channel.Recover 及边缘方法 | ✅ |
 | ACL（访问控制列表）——虚拟主机级权限 | ✅ |
 | **SASL 认证（PLAIN / AMQPLAIN / EXTERNAL）** | ✅ |
+| **消息存储压缩与分页（zlib，磁盘溢出）** | ✅ |
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |

@@ -173,6 +173,28 @@ verify_client = true   # required for EXTERNAL
 Clients presenting a valid certificate with CN `alice` will be
 authenticated as user `alice` without sending a password.
 
+### Memory Optimization
+
+```toml
+[memory]
+# Minimum payload size (bytes) to trigger zlib compression.
+# 0 = disabled.
+compression_threshold = 1024
+
+# Maximum messages per queue kept in memory before paging to disk.
+# 0 = disabled.
+max_in_memory_messages = 10000
+
+# Directory for on-disk page files.
+page_dir = "/var/lib/gomq/pages"
+```
+
+When **compression** is enabled, messages with payloads larger than the
+threshold are transparently compressed on enqueue and decompressed on
+dequeue.  When **paging** is enabled, older messages are flushed to
+page files when a queue exceeds the in-memory limit; they can be
+reloaded on demand.
+
 ### Web UI
 
 ```toml
@@ -243,6 +265,7 @@ The management UI is built with **htmx** and provides real-time views of connect
 | Channel.Recover and edge methods | ✅ |
 | ACL (Access Control List) — vhost-level permissions | ✅ |
 | **SASL authentication (PLAIN / AMQPLAIN / EXTERNAL)** | ✅ |
+| **Memory compression & paging (zlib, disk overflow)** | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
 | Plugin System | ✅ |
 | Federation / Shovel | ✅ |
