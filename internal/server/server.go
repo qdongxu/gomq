@@ -165,6 +165,18 @@ func (s *Server) RestoreFromStore(ctx context.Context) error {
 	return nil
 }
 
+// Addr returns the TCP address the server is listening on, or nil
+// if Listen has not yet been called.
+func (s *Server) Addr() net.Addr {
+	s.mu.RLock()
+	l := s.listener
+	s.mu.RUnlock()
+	if l == nil {
+		return nil
+	}
+	return l.Addr()
+}
+
 // Listen starts a TCP listener on the given address.
 func (s *Server) Listen(addr string) error {
 	l, err := net.Listen("tcp", addr)
