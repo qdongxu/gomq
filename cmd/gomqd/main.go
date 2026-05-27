@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,6 +22,7 @@ import (
 	"github.com/qdongxu/gomq/internal/metrics"
 	"github.com/qdongxu/gomq/internal/server"
 	"github.com/qdongxu/gomq/internal/store"
+	"github.com/qdongxu/gomq/internal/web"
 )
 
 const version = "0.1.0"
@@ -175,6 +177,47 @@ func main() {
 			log.Printf("serve: %v", err)
 		}
 	}()
+
+	// Web UI when configured.
+	var webBroker *server.WebBroker
+	if cfg.Web.Enabled {
+		webBroker = server.NewWebBroker(srv)
+		web.SetBroker(webBroker)
+		ws := web.NewServer()
+		webAddr := "0.0.0.0:15672"
+		if cfg.Web.Listen != "" {
+			webAddr = cfg.Web.Listen
+		}
+		go func() {
+			log.Printf("web UI: http://%s", webAddr)
+			if err := http.ListenAndServe(webAddr, ws); err != nil {
+				log.Printf("web server: %v", err)
+			}
+		}()
+	}
+
+	// Management endpoints (health, readiness, pprof).
+	if cfg.Management.HealthEnabled {
+		mgmtAddr := cfg.Management.BindAddress
+		if mgmtAddr == "" {
+			// Reuse web UI port when bind_address is empty.
+			mgmtAddr = "0.0.0.0:15672"
+			if cfg.Web.Listen != "" {
+				mgmtAddr = cfg.Web.Listen
+			}
+		}
+		mgmt := server.NewManagementServer(srv)
+		if cfg.Management.PprofEnabled && cfg.Log.Level == "debug" {
+			mgmt.EnablePprof()
+			log.Printf("pprof enabled at http://%s/debug/pprof/", mgmtAddr)
+		}
+		go func() {
+			log.Printf("health endpoint: http://%s/api/health", mgmtAddr)
+			if err := mgmt.ListenAndServe(mgmtAddr); err != nil {
+				log.Printf("management server: %v", err)
+			}
+		}()
+	}
 
 	// Start mirror queue background sync loop.
 	var stopMirrorSync func()

@@ -226,6 +226,28 @@ path_prefix = "/"
 
 The management UI is built with **htmx** and provides real-time views of connections, channels, exchanges, queues, bindings, and admin controls.
 
+### Management Endpoints (Health & Readiness)
+
+```toml
+[management]
+# Enable /api/health and /api/ready endpoints.
+health_enabled = true
+
+# Enable /debug/pprof/* (only when log.level = "debug").
+pprof_enabled = false
+
+# Dedicated bind address; leave empty to reuse the web UI port.
+bind_address = ""
+```
+
+| Endpoint | Method | Purpose | Response |
+|----------|--------|---------|----------|
+| `/api/health` | GET | Node health (up/down), version, uptime, component checks | `200 OK` + JSON |
+| `/api/ready` | GET | Readiness probe (listener + store status) | `200 OK` or `503 Service Unavailable` + JSON |
+| `/debug/pprof/` | GET | Runtime profiles (heap, CPU, goroutine, mutex) | `200 OK` (debug only) |
+
+The readiness endpoint returns `503` when the AMQP listener is not active or the persistence store (etcd) is unreachable.
+
 ## Project Structure
 
 | Path | Description |
@@ -292,6 +314,8 @@ The management UI is built with **htmx** and provides real-time views of connect
 | Mirrored Queue (HA Queue) | ✅ |
 | Plugin System | ✅ |
 | Federation / Shovel | ✅ |
+| **Health check & readiness probe** | ✅ |
+| **pprof runtime profiling (debug mode)** | ✅ |
 
 ## Development
 
