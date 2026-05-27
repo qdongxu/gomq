@@ -114,6 +114,10 @@ func main() {
 		); err != nil {
 			log.Fatalf("listen tls: %v", err)
 		}
+		srv.SetTLSCertPaths(
+			cfg.TLS.CertFile, cfg.TLS.KeyFile,
+			cfg.TLS.CAFile, cfg.TLS.VerifyClient,
+		)
 	}
 
 	// Metrics endpoint when configured.
@@ -178,6 +182,24 @@ func main() {
 		}
 	}()
 
+	// Config hot-reloader.
+	var reloader *config.Reloader
+	if *configPath != "" {
+		reloader, err = config.NewReloader(
+			*configPath,
+			config.Load,
+			func(newCfg *config.Config) error {
+				return applyConfig(srv, cfg, newCfg)
+			},
+		)
+		if err != nil {
+			log.Printf("config watcher: %v", err)
+		} else {
+			reloader.Start()
+			log.Printf("config hot-reload enabled: %s", *configPath)
+		}
+	}
+
 	// Web UI when configured.
 	var webBroker *server.WebBroker
 	if cfg.Web.Enabled {
@@ -237,10 +259,27 @@ func main() {
 	srv.ShovelManager().StartAll()
 
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
+loop:
+	for sig := range sigCh {
+		switch sig {
+		case syscall.SIGHUP:
+			log.Println("received SIGHUP, reloading config...")
+			if reloader != nil {
+				if err := reloader.Reload(); err != nil {
+					log.Printf("config reload failed: %v", err)
+				}
+			}
+		default:
+			break loop
+		}
+	}
 
 	fmt.Println("shutting down...")
+	if reloader != nil {
+		reloader.Stop()
+	}
 	if stopMirrorSync != nil {
 		stopMirrorSync()
 	}
@@ -257,6 +296,38 @@ func main() {
 		log.Printf("shutdown: %v", err)
 	}
 	fmt.Println("gomqd stopped")
+}
+
+// applyConfig compares the current and new configuration, applies
+// reloadable changes to the server, and logs warnings for changes
+// that require a restart.
+func applyConfig(srv *server.Server, oldCfg, newCfg *config.Config) error {
+	reloadable, ignored := config.IsReloadable(oldCfg, newCfg)
+	if !reloadable {
+		for _, key := range ignored {
+			log.Printf("config reload: ignoring non-reloadable key %q (restart required)", key)
+		}
+	}
+
+	// Apply server-level reloadable settings.
+	if err := srv.ReloadConfig(newCfg); err != nil {
+		return err
+	}
+
+	// Log level.
+	if oldCfg.Log.Level != newCfg.Log.Level {
+		log.Printf("config reload: log level changed %q -> %q", oldCfg.Log.Level, newCfg.Log.Level)
+	}
+
+	// TLS certificate paths.
+	if newCfg.TLS.Enabled {
+		if err := srv.ReloadTLS(newCfg); err != nil {
+			return err
+		}
+		log.Printf("config reload: tls certificates updated")
+	}
+
+	return nil
 }
 
 // newStore creates a persistence backend based on configuration.

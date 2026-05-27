@@ -220,6 +220,53 @@ path_prefix = "/"
 
 管理端基于 **htmx** 构建，提供连接、信道、交换机、队列、绑定和管理控制的实时视图。
 
+### 管理端点（健康检查与就绪探针）
+
+```toml
+[management]
+# 启用 /api/health 和 /api/ready 端点
+health_enabled = true
+
+# 启用 /debug/pprof/*（仅在 log.level = "debug" 时生效）
+pprof_enabled = false
+
+# 独立绑定地址；留空则复用 Web 管理端端口
+bind_address = ""
+```
+
+| 端点 | 方法 | 用途 | 响应 |
+|------|------|------|------|
+| `/api/health` | GET | 节点健康状态（运行/宕机）、版本、运行时间、组件检查 | `200 OK` + JSON |
+| `/api/ready` | GET | 就绪探针（监听器 + 存储状态） | `200 OK` 或 `503 Service Unavailable` + JSON |
+| `/debug/pprof/` | GET | 运行时分析（堆内存、CPU、协程、互斥锁） | `200 OK`（仅调试模式） |
+
+就绪端点在 AMQP 监听器未激活或持久化存储（etcd）不可达时返回 `503`。
+
+### 热重载
+
+```toml
+[management]
+# 启用配置文件监听以实现热重载
+health_enabled = true
+```
+
+gomq 监听配置文件变更并自动应用可热重载的设置，无需重启进程。发送 `SIGHUP` 强制触发重载：
+
+```bash
+kill -HUP $(pgrep gomqd)
+```
+
+| 可热重载 | 不可热重载（需重启） |
+|---------|---------------------|
+| 日志级别 | 网络监听端口 |
+| TLS 证书路径 | etcd 端点 |
+| ACL 规则 | 集群节点 ID |
+| 速率限制阈值 | Web UI / metrics 端口 |
+| 背压阈值 | |
+| 内存设置 | |
+
+当不可热重载的配置项变更时，系统会打印警告并忽略该变更，直到下次重启。
+
 ## 项目结构
 
 | 路径 | 说明 |
@@ -286,6 +333,7 @@ path_prefix = "/"
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |
+| **配置热重载** | ✅ |
 | **健康检查与就绪探针** | ✅ |
 | **pprof 运行时分析（调试模式）** | ✅ |
 

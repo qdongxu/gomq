@@ -248,6 +248,31 @@ bind_address = ""
 
 The readiness endpoint returns `503` when the AMQP listener is not active or the persistence store (etcd) is unreachable.
 
+### Hot Reload
+
+```toml
+[management]
+# Enable config file watching for hot reload.
+health_enabled = true
+```
+
+gomq watches the configuration file for changes and applies reloadable settings without restarting the process. Send `SIGHUP` to force a reload:
+
+```bash
+kill -HUP $(pgrep gomqd)
+```
+
+| Reloadable | Non-reloadable (requires restart) |
+|-----------|----------------------------------|
+| Log level | Network listeners |
+| TLS certificates | etcd endpoints |
+| ACL rules | Cluster node ID |
+| Rate limits | Web UI / metrics ports |
+| Backpressure thresholds | |
+| Memory settings | |
+
+When a non-reloadable key is changed, a warning is logged and the key is ignored until the next restart.
+
 ## Project Structure
 
 | Path | Description |
@@ -312,8 +337,8 @@ The readiness endpoint returns `503` when the AMQP listener is not active or the
 | **Connection.CloseOk / Channel.CloseOk handlers** | ✅ |
 | **Basic.Reject (requeue + no-requeue + DLX)** | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
-| Plugin System | ✅ |
 | Federation / Shovel | ✅ |
+| **Config hot reload** | ✅ |
 | **Health check & readiness probe** | ✅ |
 | **pprof runtime profiling (debug mode)** | ✅ |
 
