@@ -286,6 +286,8 @@ path_prefix = "/"
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |
+| **健康检查与就绪探针** | ✅ |
+| **pprof 运行时分析（调试模式）** | ✅ |
 
 ## 开发
 

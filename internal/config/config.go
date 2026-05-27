@@ -50,6 +50,13 @@ type Metrics struct {
 		// e.g. "0.0.0.0:15692"
 }
 
+// Management holds runtime monitoring and health-check settings.
+type Management struct {
+	HealthEnabled bool   `toml:"health_enabled"` // enable /api/health and /api/ready
+	PprofEnabled  bool   `toml:"pprof_enabled"`  // enable /debug/pprof (debug only)
+	BindAddress   string `toml:"bind_address"`   // HTTP bind address, empty = reuse web UI port
+}
+
 // Memory holds message-store tuning settings.
 type Memory struct {
 	CompressionThreshold int    `toml:"compression_threshold"` // min payload bytes to compress, 0=off
@@ -87,16 +94,17 @@ type ACL struct {
 
 // Config is the top-level server configuration.
 type Config struct {
-	Network Network `toml:"network"`
-	Log     Log     `toml:"log"`
-	Cluster Cluster `toml:"cluster"`
-	Web     Web     `toml:"web"`
-	Auth    Auth    `toml:"auth"`
-	ACL     ACL     `toml:"acl"`
-	TLS     TLS     `toml:"tls"`
-	Metrics Metrics `toml:"metrics"`
-	Memory  Memory  `toml:"memory"`
-	Limits  Limits  `toml:"limits"`
+	Network    Network    `toml:"network"`
+	Log        Log        `toml:"log"`
+	Cluster    Cluster    `toml:"cluster"`
+	Web        Web        `toml:"web"`
+	Auth       Auth       `toml:"auth"`
+	ACL        ACL        `toml:"acl"`
+	TLS        TLS        `toml:"tls"`
+	Metrics    Metrics    `toml:"metrics"`
+	Management Management `toml:"management"`
+	Memory     Memory     `toml:"memory"`
+	Limits     Limits     `toml:"limits"`
 }
 
 // Default returns a Config populated with safe defaults.
@@ -125,6 +133,11 @@ func Default() *Config {
 			CompressionThreshold: 0,
 			MaxInMemoryMessages:  0,
 			PageDir:              "/var/lib/gomq/pages",
+		},
+		Management: Management{
+			HealthEnabled: true,
+			PprofEnabled:  false,
+			BindAddress:   "",
 		},
 	}
 }
