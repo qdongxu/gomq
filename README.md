@@ -408,6 +408,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | **Health check & readiness probe** | ✅ |
 | **pprof runtime profiling (debug mode)** | ✅ |
 | **Benchmark suite** | ✅ |
+| **Compatibility test suite** | ⚠️ | Infrastructure ready; blocked by protocol handshake issue with amqp091-go client |
 
 ## Development
 
