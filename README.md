@@ -341,6 +341,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | **Config hot reload** | ✅ |
 | **Health check & readiness probe** | ✅ |
 | **pprof runtime profiling (debug mode)** | ✅ |
+| **Benchmark suite** | ✅ |
 
 ## Development
 
