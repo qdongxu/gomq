@@ -1,0 +1,58 @@
+# gomq lint configuration — enforces project coding standards.
+
+run:
+  timeout: 5m
+  # gomq is CGO-free; this flag is redundant but explicit.
+  skip-dirs:
+    - tests/bench
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - misspell
+  disable:
+    # Disabled because gomq intentionally avoids CGO.
+    - gochecknoglobals
+    # Disabled — benchmarks legitimately reuse loop variables.
+    - scopelint
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      # shadow checking is noisy for short-lived variables.
+      - shadow
+  lll:
+    # Matches the project line-width convention (see AGENTS.md).
+    line-length: 80
+  gocyclo:
+    # Functions should not exceed 15 branches.
+    min-complexity: 15
+  goimports:
+    local-prefixes: github.com/qdongxu/gomq
+
+issues:
+  exclude-rules:
+    # Benchmarks may ignore errors — acceptable for performance tests.
+    - path: _test\.go
+      linters:
+        - errcheck
+    # Benchmark helper setup functions are allowed to be long.
+    - path: tests/bench/setup\.go
+      linters:
+        - funlen
+        - gocyclo
+    # Main.go flag setup is inherently sequential and long.
+    - path: cmd/gomqd/main\.go
+      linters:
+        - funlen
+        - gocyclo
+
+  # Show all issues from a linter before moving to the next.
+  max-issues-per-linter: 0
+  max-same-issues: 0

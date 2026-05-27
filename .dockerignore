@@ -1,0 +1,30 @@
+.git
+.gitignore
+.github
+
+# Build artefacts
+bin/
+dist/
+*.exe
+
+# Tests and docs (not needed for a production image)
+tests/
+README.md
+README.zh.md
+tests/bench/README.md
+
+# Local configs and secrets
+*.pem
+*.key
+*.crt
+.env
+
+# Editor artefacts
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
