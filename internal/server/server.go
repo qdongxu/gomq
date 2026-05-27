@@ -11,6 +11,7 @@ import (
 
 	"github.com/qdongxu/gomq/internal/auth"
 	"github.com/qdongxu/gomq/internal/cluster"
+	"github.com/qdongxu/gomq/internal/config"
 	"github.com/qdongxu/gomq/internal/metrics"
 	"github.com/qdongxu/gomq/internal/store"
 )
@@ -30,8 +31,12 @@ type Server struct {
 	flowCtrl    *FlowController
 	metaStore   store.Store
 	listener    net.Listener
-	tlsListener net.Listener
-	metrics     metrics.Collector
+	tlsListener  net.Listener
+	tlsCertFile  string
+	tlsKeyFile   string
+	tlsCAFile    string
+	tlsVerify    bool
+	metrics      metrics.Collector
 	mu          sync.RWMutex
 	wg          sync.WaitGroup
 	closed      bool
@@ -47,6 +52,7 @@ type Server struct {
 	aclMgr      *auth.ACLManager
 	rateLimiter *RateLimiter
 	backPressure *BackPressure
+	cfg         *config.Config // current runtime config for hot-reload
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -90,6 +96,7 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		shovels:     NewShovelManager(),
 		startTime:   time.Now(),
 		metrics:     &metrics.NoOp{},
+		cfg:         config.Default(),
 	}
 }
 
@@ -179,6 +186,31 @@ func (s *Server) ListenTLS(addr string, tlsConfig *tls.Config) error {
 	s.mu.Lock()
 	s.tlsListener = l
 	s.mu.Unlock()
+	return nil
+}
+
+// SetTLSCertPaths stores the TLS certificate file paths for later reload.
+func (s *Server) SetTLSCertPaths(certFile, keyFile, caFile string, verify bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.tlsCertFile = certFile
+	s.tlsKeyFile = keyFile
+	s.tlsCAFile = caFile
+	s.tlsVerify = verify
+}
+
+// ReloadTLS validates the new certificate files.  The TLS listener itself
+// must be recreated to pick up the new certificates; this method only
+// updates the stored paths and returns an error if the files are missing.
+func (s *Server) ReloadTLS(cfg *config.Config) error {
+	if !cfg.TLS.Enabled {
+		return nil
+	}
+	_, err := NewTLSConfig(cfg.TLS.CertFile, cfg.TLS.KeyFile, cfg.TLS.CAFile, cfg.TLS.VerifyClient)
+	if err != nil {
+		return fmt.Errorf("reload tls: %w", err)
+	}
+	s.SetTLSCertPaths(cfg.TLS.CertFile, cfg.TLS.KeyFile, cfg.TLS.CAFile, cfg.TLS.VerifyClient)
 	return nil
 }
 
@@ -405,4 +437,64 @@ func (s *Server) SetBackPressure(bp *BackPressure) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.backPressure = bp
+}
+
+// Config returns the current runtime configuration.
+func (s *Server) Config() *config.Config {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.cfg
+}
+
+// ReloadConfig applies a new configuration to the running server.
+// Only reloadable sections are applied; non-reloadable changes are
+// ignored (the caller should log warnings for them).
+func (s *Server) ReloadConfig(cfg *config.Config) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	old := s.cfg
+
+	// ACL rules.
+	if len(cfg.ACL.Rules) > 0 {
+		rules := make([]auth.Rule, 0, len(cfg.ACL.Rules))
+		for _, r := range cfg.ACL.Rules {
+			rules = append(rules, auth.Rule{
+				User:         r.User,
+				VHost:        r.VHost,
+				ResourceType: auth.ResourceType(r.ResourceType),
+				ResourceName: r.ResourceName,
+				Permission:   auth.Permission(r.Permission),
+				Allow:        r.Allow,
+			})
+		}
+		s.aclMgr = auth.NewACLManager(rules)
+	} else {
+		s.aclMgr = nil
+	}
+
+	// Rate limiter.
+	if cfg.Limits.MaxConnectionsPerSecond > 0 {
+		burst := int(cfg.Limits.MaxConnectionsPerSecond)
+		if burst < 1 {
+			burst = 1
+		}
+		s.rateLimiter = NewRateLimiter(burst, cfg.Limits.MaxConnectionsPerSecond)
+	} else {
+		s.rateLimiter = nil
+	}
+
+	// Backpressure.
+	if cfg.Limits.BackPressureEnabled {
+		s.backPressure = NewBackPressure(cfg.Limits.MemoryThresholdPercent)
+	} else {
+		s.backPressure = nil
+	}
+
+	// Memory settings — propagate to the message store.
+	// (Store limits are updated via the store's own options.)
+
+	s.cfg = cfg
+	_ = old // old config no longer referenced
+	return nil
 }
