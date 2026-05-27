@@ -17,14 +17,29 @@ with embedded etcd for persistence and htmx for the web management UI.
 git clone https://github.com/qdongxu/gomq.git
 cd gomq
 
-# Build
+# Build with version injection
 make build
 
-# Run with default config
-./bin/gomqd -config configs/gomq.default.toml
+# Verify version
+./bin/gomqd -version
 
 # Run tests
 make test
+
+# Run benchmarks
+make bench
+
+# Format + lint + test (CI gate)
+make check
+
+# Build Docker image
+make docker
+
+# Cross-compile release binaries
+make release
+
+# Run with default config
+./bin/gomqd -config configs/gomq.default.toml
 ```
 
 The server listens on **5672** (AMQP) and **15672** (Web UI) by default.
@@ -40,6 +55,57 @@ go install github.com/qdongxu/gomq/cmd/gomqd@latest
 ### Binary Release
 
 Download pre-built binaries from the [Releases](https://github.com/qdongxu/gomq/releases) page.
+
+## Build & Release
+
+### Make Targets
+
+| Target | Purpose |
+|--------|---------|
+| `make build` | Compile `bin/gomqd` with version injection |
+| `make test` | Run unit + integration tests |
+| `make bench` | Run benchmark suite (`tests/bench/`) |
+| `make lint` | Run `golangci-lint` with project config |
+| `make fmt` | Auto-format with `gofmt` + `goimports` |
+| `make docker` | Build multi-stage Docker image (`< 20 MB`) |
+| `make release` | Cross-compile for linux/darwin × amd64/arm64 |
+| `make clean` | Remove `bin/` and `dist/` |
+| `make check` | CI gate: `fmt` + `lint` + `test` |
+
+### Docker
+
+```bash
+make docker
+# → qdongxu/gomqd:latest
+
+docker run -p 5672:5672 -p 15672:15672 \
+  -v $(pwd)/configs/gomq.default.toml:/etc/gomq/gomq.default.toml \
+  qdongxu/gomqd:latest
+```
+
+The image uses a two-stage build:
+1. `golang:1.25-alpine` compiles a static binary (`CGO_ENABLED=0`)
+2. `gcr.io/distroless/static:nonroot` runs the final image (no shell, minimal attack surface)
+
+### Cross-Compilation
+
+```bash
+make release
+# Generates:
+#   dist/gomqd-linux-amd64
+#   dist/gomqd-linux-arm64
+#   dist/gomqd-darwin-amd64
+#   dist/gomqd-darwin-arm64
+```
+
+### Version Injection
+
+`make build` injects the Git tag and build time via ldflags:
+
+```bash
+./bin/gomqd -version
+# gomqd v0.1.0-54-g<hash> (built 2026-05-28T02:55:00Z)
+```
 
 ## Configuration
 

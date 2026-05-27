@@ -17,14 +17,29 @@
 git clone https://github.com/qdongxu/gomq.git
 cd gomq
 
-# 编译
+# 编译（带版本注入）
 make build
 
-# 使用默认配置运行
-./bin/gomqd -config configs/gomq.default.toml
+# 验证版本
+./bin/gomqd -version
 
 # 运行测试
 make test
+
+# 运行基准测试
+make bench
+
+# 格式化 + lint + 测试（CI 门禁）
+make check
+
+# 构建 Docker 镜像
+make docker
+
+# 交叉编译发行版
+make release
+
+# 使用默认配置运行
+./bin/gomqd -config configs/gomq.default.toml
 ```
 
 服务器默认监听 **5672**（AMQP）和 **15672**（Web 管理端）。
@@ -40,6 +55,57 @@ go install github.com/qdongxu/gomq/cmd/gomqd@latest
 ### 二进制发行版
 
 从 [Releases](https://github.com/qdongxu/gomq/releases) 页面下载预编译二进制文件。
+
+## 构建与发布
+
+### Make 目标
+
+| 目标 | 用途 |
+|------|------|
+| `make build` | 编译 `bin/gomqd`，注入版本号 |
+| `make test` | 运行单元测试 + 集成测试 |
+| `make bench` | 运行基准测试套件（`tests/bench/`） |
+| `make lint` | 使用项目配置运行 `golangci-lint` |
+| `make fmt` | `gofmt` + `goimports` 自动格式化 |
+| `make docker` | 构建多阶段 Docker 镜像（`< 20 MB`） |
+| `make release` | 交叉编译 linux/darwin × amd64/arm64 |
+| `make clean` | 清理 `bin/` 和 `dist/` |
+| `make check` | CI 门禁：`fmt` + `lint` + `test` |
+
+### Docker
+
+```bash
+make docker
+# → qdongxu/gomqd:latest
+
+docker run -p 5672:5672 -p 15672:15672 \
+  -v $(pwd)/configs/gomq.default.toml:/etc/gomq/gomq.default.toml \
+  qdongxu/gomqd:latest
+```
+
+镜像使用两阶段构建：
+1. `golang:1.25-alpine` 编译静态二进制（`CGO_ENABLED=0`）
+2. `gcr.io/distroless/static:nonroot` 运行最终镜像（无 shell，最小攻击面）
+
+### 交叉编译
+
+```bash
+make release
+# 生成：
+#   dist/gomqd-linux-amd64
+#   dist/gomqd-linux-arm64
+#   dist/gomqd-darwin-amd64
+#   dist/gomqd-darwin-arm64
+```
+
+### 版本注入
+
+`make build` 通过 ldflags 注入 Git 标签和构建时间：
+
+```bash
+./bin/gomqd -version
+# gomqd v0.1.0-54-g<hash> (built 2026-05-28T02:55:00Z)
+```
 
 ## 配置
 

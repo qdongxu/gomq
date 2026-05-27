@@ -25,7 +25,11 @@ import (
 	"github.com/qdongxu/gomq/internal/web"
 )
 
-const version = "0.1.0"
+// Injected by -ldflags at build time.
+var (
+	version   = "dev"
+	buildTime = "unknown"
+)
 
 func main() {
 	configPath := flag.String(
@@ -33,7 +37,16 @@ func main() {
 		"configs/gomq.default.toml",
 		"path to TOML configuration file",
 	)
+	showVersion := flag.Bool(
+		"version", false,
+		"print version and exit",
+	)
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("gomqd %s (built %s)\n", version, buildTime)
+		os.Exit(0)
+	}
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
