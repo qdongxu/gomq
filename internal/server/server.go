@@ -53,6 +53,9 @@ type Server struct {
 	rateLimiter *RateLimiter
 	backPressure *BackPressure
 	cfg         *config.Config // current runtime config for hot-reload
+	pipeline    *Pipeline
+	workerPool  *WorkerPool
+	flushSched  *FlushScheduler
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -97,6 +100,9 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		startTime:   time.Now(),
 		metrics:     &metrics.NoOp{},
 		cfg:         config.Default(),
+		pipeline:    NewPipeline(publisher, DefaultPipelineConfig()),
+		workerPool:  NewWorkerPool(0, 256),
+		flushSched:  NewFlushScheduler(50 * time.Millisecond),
 	}
 }
 
@@ -351,6 +357,15 @@ func (s *Server) Shutdown() error {
 	if tlsL != nil {
 		_ = tlsL.Close()
 	}
+	if s.pipeline != nil {
+		s.pipeline.Stop()
+	}
+	if s.workerPool != nil {
+		s.workerPool.Stop()
+	}
+	if s.flushSched != nil {
+		s.flushSched.Stop()
+	}
 	s.wg.Wait()
 	return nil
 }
@@ -375,6 +390,20 @@ func (s *Server) ConsumerManager() *ConsumerManager { return s.consumers }
 
 // Publisher returns the publisher.
 func (s *Server) Publisher() *Publisher { return s.publisher }
+
+// Pipeline returns the batching pipeline.
+func (s *Server) Pipeline() *Pipeline { return s.pipeline }
+
+// WorkerPool returns the fixed worker pool.
+func (s *Server) WorkerPool() *WorkerPool { return s.workerPool }
+
+// FlushScheduler returns the unified flush scheduler.
+func (s *Server) FlushScheduler() *FlushScheduler { return s.flushSched }
+
+// PublishViaPipeline routes a message through the batched pipeline.
+func (s *Server) PublishViaPipeline(ex, rk string, msg *Message, chID uint16) {
+	s.pipeline.Submit(ex, rk, msg, chID)
+}
 
 // DeliveryTracker returns the delivery tracker.
 func (s *Server) DeliveryTracker() *DeliveryTracker { return s.tracker }
