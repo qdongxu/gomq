@@ -166,6 +166,25 @@ discovery = "static"
 nodes = ["node-2@192.168.1.10:5672", "node-3@192.168.1.11:5672"]
 ```
 
+### Quorum Queue & Raft Network Layer
+
+gomq uses a simplified Raft consensus algorithm for multi-node Quorum Queue replication:
+
+- **Raft State Machine**: Leader election, log replication, heartbeat mechanism
+- **Transport Layer**: In-memory transport (testing) and HTTP/JSON transport (production)
+- **Failover**: Automatic re-election when the leader fails
+- **Integration Tests**: 3-node local cluster verifying leader election, log replication, and failover
+
+Implementation is in `internal/cluster/`:
+
+| File | Responsibility |
+|------|----------------|
+| `raft.go` | Core Raft state machine (Term, Log, CommitIndex) |
+| `raft_transport.go` | Transport interface + in-memory transport |
+| `raft_rpc.go` | HTTP/JSON transport implementation |
+| `raft_node.go` | Multi-node extension (Run loop, election, heartbeat) |
+| `raft_integration_test.go` | 3-node integration test |
+
 ### Prometheus Metrics
 
 ```toml
@@ -390,6 +409,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | Web management UI — Bindings page | ✅ |
 | Web management UI — Admin page | ✅ |
 | Quorum Queue (Raft-based replication) | ✅ |
+| **Quorum Queue — Multi-node Raft network layer** | ✅ |
 | Exchange-to-Exchange Binding | ✅ |
 | Cluster node discovery via etcd | ✅ |
 | TLS support (AMQP over TLS + mTLS) | ✅ |

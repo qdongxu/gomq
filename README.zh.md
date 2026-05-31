@@ -157,7 +157,7 @@ discovery = "etcd"
 etcd_endpoints = ["http://localhost:2379"]
 ```
 
-静态发现（无需 etcd）：
+静态发现（无需 etcd）
 
 ```toml
 [cluster]
@@ -165,6 +165,25 @@ node_id = "node-1"
 discovery = "static"
 nodes = ["node-2@192.168.1.10:5672", "node-3@192.168.1.11:5672"]
 ```
+
+### Quorum Queue & Raft 网络层
+
+gomq 使用简化版 Raft 共识算法实现 Quorum Queue 的多节点复制：
+
+- **Raft 状态机**：Leader 选举、日志复制、心跳机制
+- **传输层**：支持内存传输（测试）和 HTTP/JSON 传输（生产）
+- **故障转移**：Leader 故障后，剩余节点自动重新选举
+- **集成测试**：3 节点本地集群验证 Leader 选举、日志复制和故障转移
+
+相关实现位于 `internal/cluster/`：
+
+| 文件 | 职责 |
+|------|------|
+| `raft.go` | Raft 核心状态机（Term、Log、CommitIndex） |
+| `raft_transport.go` | Transport 接口 + 内存传输实现 |
+| `raft_rpc.go` | HTTP/JSON 传输实现 |
+| `raft_node.go` | 多节点扩展（Run 循环、选举、心跳） |
+| `raft_integration_test.go` | 3 节点集成测试 |
 
 ### Prometheus 指标
 
@@ -384,6 +403,7 @@ kill -HUP $(pgrep gomqd)
 | Web 管理端 — Bindings 页面 | ✅ |
 | Web 管理端 — Admin 页面 | ✅ |
 | Quorum Queue（基于 Raft 的镜像复制） | ✅ |
+| **Quorum Queue — 多节点 Raft 网络层** | ✅ |
 | Exchange-to-Exchange 绑定 | ✅ |
 | 集群节点发现（etcd） | ✅ |
 | TLS 支持（AMQP over TLS + mTLS） | ✅ |

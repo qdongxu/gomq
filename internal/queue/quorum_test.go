@@ -119,7 +119,7 @@ func TestRaftNodeStateTransitions(t *testing.T) {
 
 func TestRaftNodeAppendEntries(t *testing.T) {
 	r := cluster.NewRaftNode("n1", nil)
-	if !r.AppendEntries(1, 0, []cluster.LogEntry{
+	if !r.AppendEntries(1, 0, 0, 0, []cluster.LogEntry{
 		{Index: 1, Term: 1, Command: []byte("a")},
 	}) {
 		t.Fatal("append rejected")
@@ -128,7 +128,7 @@ func TestRaftNodeAppendEntries(t *testing.T) {
 		t.Fatalf("commit = %d, want 0", r.CommitIndex())
 	}
 	// Commit via leaderCommit.
-	r.AppendEntries(1, 1, nil)
+	r.AppendEntries(1, 1, 0, 0, nil)
 	if r.CommitIndex() != 1 {
 		t.Fatalf("commit = %d, want 1", r.CommitIndex())
 	}
