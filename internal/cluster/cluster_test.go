@@ -67,7 +67,7 @@ func TestHeartbeat(t *testing.T) {
 	c.Heartbeat("n2")
 	after := c.Nodes()[1].LastSeen
 
-	if !after.After(before) {
+	if after.Before(before) {
 		t.Fatal("heartbeat did not update LastSeen")
 	}
 }

@@ -3,8 +3,6 @@
 run:
   timeout: 5m
   # gomq is CGO-free; this flag is redundant but explicit.
-  skip-dirs:
-    - tests/bench
 
 linters:
   enable:
@@ -37,6 +35,8 @@ linters-settings:
     local-prefixes: github.com/qdongxu/gomq
 
 issues:
+  exclude-dirs:
+    - tests/bench
   exclude-rules:
     # Benchmarks may ignore errors — acceptable for performance tests.
     - path: _test\.go

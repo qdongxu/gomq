@@ -36,25 +36,28 @@ type LogEntry struct {
 
 // RaftNode is a simplified Raft consensus node.
 type RaftNode struct {
-	nodeID    string
-	state     RaftState
-	currentTerm uint64
-	votedFor  string
-	log       []LogEntry
-	commitIndex uint64
-	lastApplied uint64
-	mu        sync.RWMutex
-	electionTimer *time.Timer
-	peers     []string
+	nodeID          string
+	state           RaftState
+	currentTerm     uint64
+	votedFor        string
+	log             []LogEntry
+	commitIndex     uint64
+	lastApplied     uint64
+	mu              sync.RWMutex
+	electionTimer   *time.Timer
+	peers           []string
+	transport       RaftTransport
+	electionResetCh chan struct{}
 }
 
 // NewRaftNode creates a new Raft node.
 func NewRaftNode(nodeID string, peers []string) *RaftNode {
 	r := &RaftNode{
-		nodeID: nodeID,
-		state:  StateFollower,
-		peers:  peers,
-		log:    make([]LogEntry, 0),
+		nodeID:          nodeID,
+		state:           StateFollower,
+		peers:           peers,
+		log:             make([]LogEntry, 0),
+		electionResetCh: make(chan struct{}, 1),
 	}
 	r.resetElectionTimer()
 	return r
@@ -98,7 +101,7 @@ func (r *RaftNode) Propose(cmd []byte) (uint64, error) {
 
 // AppendEntries handles incoming append from a leader.
 func (r *RaftNode) AppendEntries(
-	term, leaderCommit uint64,
+	term, leaderCommit, prevLogIndex, prevLogTerm uint64,
 	entries []LogEntry,
 ) (success bool) {
 	r.mu.Lock()
@@ -114,17 +117,30 @@ func (r *RaftNode) AppendEntries(
 		r.votedFor = ""
 	}
 
-	r.resetElectionTimer()
+	r.signalElectionReset()
+
+	// Check prevLogIndex and prevLogTerm.
+	if prevLogIndex > 0 {
+		if prevLogIndex > uint64(len(r.log)) {
+			return false
+		}
+		if r.log[prevLogIndex-1].Term != prevLogTerm {
+			return false
+		}
+	}
 
 	// Append new entries.
-	for _, ent := range entries {
-		if ent.Index <= uint64(len(r.log)) {
-			if r.log[ent.Index-1].Term != ent.Term {
-				r.log = r.log[:ent.Index-1]
-				r.log = append(r.log, ent)
+	for i, ent := range entries {
+		idx := ent.Index
+		if idx <= uint64(len(r.log)) {
+			if r.log[idx-1].Term != ent.Term {
+				r.log = r.log[:idx-1]
+				r.log = append(r.log, entries[i:]...)
+				break
 			}
 		} else {
-			r.log = append(r.log, ent)
+			r.log = append(r.log, entries[i:]...)
+			break
 		}
 	}
 
@@ -171,7 +187,7 @@ func (r *RaftNode) RequestVote(
 	}
 
 	r.votedFor = candidateID
-	r.resetElectionTimer()
+	r.signalElectionReset()
 	return true
 }
 
@@ -230,6 +246,15 @@ func (r *RaftNode) resetElectionTimer() {
 	r.electionTimer = time.AfterFunc(d, func() {
 		r.BecomeCandidate()
 	})
+	r.signalElectionReset()
+}
+
+// signalElectionReset notifies the Run loop to reset election timer.
+func (r *RaftNode) signalElectionReset() {
+	select {
+	case r.electionResetCh <- struct{}{}:
+	default:
+	}
 }
 
 // ErrNotLeader is returned when a non-leader tries to propose.
