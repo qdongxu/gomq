@@ -400,6 +400,7 @@ kill -HUP $(pgrep gomqd)
 | Web 管理端 — Channels 页面 | ✅ |
 | Web 管理端 — Exchanges 页面 | ✅ |
 | Web 管理端 — Queues 页面 | ✅ |
+| **Web 管理端 — Messages 页面** | ✅ |
 | Web 管理端 — Bindings 页面 | ✅ |
 | Web 管理端 — Admin 页面 | ✅ |
 | Quorum Queue（基于 Raft 的镜像复制） | ✅ |

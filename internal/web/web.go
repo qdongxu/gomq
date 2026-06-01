@@ -32,6 +32,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/bindings", s.handleBindings)
 	s.mux.HandleFunc("/api/connections", s.handleConnections)
 	s.mux.HandleFunc("/api/channels", s.handleChannels)
+	s.mux.HandleFunc("/api/messages", s.handleMessages)
 }
 
 // ServeHTTP implements http.Handler.
@@ -47,6 +48,16 @@ type ConnectionInfo struct {
 	Heartbeat  int    `json:"heartbeat"`
 }
 
+// MessageInfo holds message data for the UI.
+type MessageInfo struct {
+	DeliveryTag uint64                 `json:"delivery_tag"`
+	Payload     string                 `json:"payload"`
+	Headers     map[string]interface{} `json:"headers"`
+	Timestamp   string                 `json:"timestamp"`
+	Exchange    string                 `json:"exchange"`
+	RoutingKey  string                 `json:"routing_key"`
+}
+
 // Broker is the subset of broker state exposed to the web UI.
 type Broker interface {
 	ExchangeList() []ExchangeInfo
@@ -54,6 +65,7 @@ type Broker interface {
 	BindingList() []BindingInfo
 	ConnectionList() []ConnectionInfo
 	ChannelList() []ChannelInfo
+	MessageList(queueName string, limit, offset int) []MessageInfo
 }
 
 // ExchangeInfo holds exchange data for the UI.

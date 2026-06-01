@@ -14,6 +14,7 @@ type mockBroker struct {
 	bindings    []BindingInfo
 	connections []ConnectionInfo
 	channels    []ChannelInfo
+	messages    []MessageInfo
 	overview    OverviewInfo
 	admin       AdminInfo
 }
@@ -23,6 +24,7 @@ func (m *mockBroker) QueueList() []QueueInfo           { return m.queues }
 func (m *mockBroker) BindingList() []BindingInfo         { return m.bindings }
 func (m *mockBroker) ConnectionList() []ConnectionInfo   { return m.connections }
 func (m *mockBroker) ChannelList() []ChannelInfo       { return m.channels }
+func (m *mockBroker) MessageList(string, int, int) []MessageInfo { return m.messages }
 func (m *mockBroker) Overview() OverviewInfo             { return m.overview }
 func (m *mockBroker) Admin() AdminInfo                   { return m.admin }
 
@@ -50,6 +52,9 @@ func TestHandleIndex(t *testing.T) {
 	}
 	if !contains(body, "Overview") {
 		t.Fatal("missing Overview section in index response")
+	}
+	if !contains(body, "Messages") {
+		t.Fatal("missing Messages section in index response")
 	}
 }
 
@@ -376,6 +381,72 @@ func TestHandleAdmin(t *testing.T) {
 	}
 	if len(out.Users) != 1 || out.Users[0].Username != "guest" {
 		t.Fatalf("unexpected users: %+v", out.Users)
+	}
+}
+
+func TestHandleMessages(t *testing.T) {
+	SetMessagesBroker(&mockBroker{
+		messages: []MessageInfo{
+			{DeliveryTag: 1, Payload: "hello", Exchange: "ex1", RoutingKey: "rk", Timestamp: "2026-06-01T00:00:00Z"},
+			{DeliveryTag: 2, Payload: "world", Exchange: "ex1", RoutingKey: "rk", Timestamp: "2026-06-01T00:01:00Z"},
+		},
+	})
+	defer SetMessagesBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET", "/api/messages?queue=test&limit=2&offset=0", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var out []MessageInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 2 {
+		t.Fatalf("unexpected len: %d", len(out))
+	}
+	if out[0].DeliveryTag != 1 || out[0].Payload != "hello" {
+		t.Fatalf("unexpected response: %+v", out[0])
+	}
+}
+
+func TestHandleMessagesEmptyQueue(t *testing.T) {
+	SetMessagesBroker(&mockBroker{messages: []MessageInfo{}})
+	defer SetMessagesBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET", "/api/messages?queue=empty", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	var out []MessageInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 0 {
+		t.Fatalf("expected empty, got %d", len(out))
+	}
+}
+
+func TestHandleMessagesNoQueue(t *testing.T) {
+	SetMessagesBroker(&mockBroker{messages: []MessageInfo{}})
+	defer SetMessagesBroker(nil)
+
+	srv := NewServer()
+	req := httptest.NewRequest("GET", "/api/messages", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	var out []MessageInfo
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 0 {
+		t.Fatalf("expected empty, got %d", len(out))
 	}
 }
 

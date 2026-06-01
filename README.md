@@ -406,6 +406,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | Web management UI — Channels page | ✅ |
 | Web management UI — Exchanges page | ✅ |
 | Web management UI — Queues page | ✅ |
+| **Web management UI — Messages page** | ✅ |
 | Web management UI — Bindings page | ✅ |
 | Web management UI — Admin page | ✅ |
 | Quorum Queue (Raft-based replication) | ✅ |

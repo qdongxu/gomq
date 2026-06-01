@@ -167,6 +167,27 @@ func (wb *WebBroker) ChannelList() []web.ChannelInfo {
 	return out
 }
 
+// MessageList returns paginated messages from a queue for the UI.
+func (wb *WebBroker) MessageList(queueName string, limit, offset int) []web.MessageInfo {
+	msgs := wb.srv.MessageStore().MessageList(queueName, limit, offset)
+	out := make([]web.MessageInfo, 0, len(msgs))
+	for _, m := range msgs {
+		payload := string(m.Payload())
+		if len(payload) > 200 {
+			payload = payload[:200] + "..."
+		}
+		out = append(out, web.MessageInfo{
+			DeliveryTag: m.DeliveryTag(),
+			Payload:     payload,
+			Headers:     m.Properties().Headers,
+			Timestamp:   m.EnqueuedAt().Format(time.RFC3339),
+			Exchange:    m.Exchange(),
+			RoutingKey:  m.RoutingKey(),
+		})
+	}
+	return out
+}
+
 const serverVersion = "0.1.0"
 
 // Admin returns server admin data for the UI.
