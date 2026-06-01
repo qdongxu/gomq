@@ -1,0 +1,10 @@
+cd /root/.openclaw/workspace/gomq && git add -A && git commit -m "feat: WebSocket realtime push for management UI
+
+- websocket.go: WebSocket upgrade handler with gorilla/websocket
+- broadcaster.go: typed event broadcaster (connection_open/close, message_published,
+  queue_depth_changed, consumer_added/removed)
+- web.go: NewServerWithWebSocket() + /ws route registration
+- websocket_test.go: Hub broadcast + WebSocket integration tests
+- go.mod: add github.com/gorilla/websocket v1.5.3
+
+Closes #143"

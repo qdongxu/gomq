@@ -23,6 +23,14 @@ func NewServer() *Server {
 	return s
 }
 
+// NewServerWithWebSocket creates a server with a WebSocket hub.
+func NewServerWithWebSocket(hub *Hub) *Server {
+	s := &Server{mux: http.NewServeMux()}
+	s.registerRoutes()
+	s.registerWebSocket(hub)
+	return s
+}
+
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/", s.handleIndex)
 	s.mux.HandleFunc("/api/overview", s.handleOverview)
@@ -33,6 +41,12 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/connections", s.handleConnections)
 	s.mux.HandleFunc("/api/channels", s.handleChannels)
 	s.mux.HandleFunc("/api/messages", s.handleMessages)
+}
+
+func (s *Server) registerWebSocket(hub *Hub) {
+	s.mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		ServeWebSocket(hub, w, r)
+	})
 }
 
 // ServeHTTP implements http.Handler.
