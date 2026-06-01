@@ -83,7 +83,25 @@ func (s *MessageStore) EnqueuePriority(queueName string, msg *Message) {
 	)
 }
 
-// AllQueues returns the names of all queues that have messages.
+// MessageList returns a paginated slice of messages from the named queue.
+// offset and limit are applied to the in-memory queue slice.
+func (s *MessageStore) MessageList(queueName string, limit, offset int) []*Message {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	q := s.queues[queueName]
+	if offset >= len(q) {
+		return nil
+	}
+	end := offset + limit
+	if end > len(q) {
+		end = len(q)
+	}
+	out := make([]*Message, end-offset)
+	copy(out, q[offset:end])
+	return out
+}
+
 func (s *MessageStore) AllQueues() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

@@ -90,5 +90,19 @@
 		<thead><tr><th>Exchange</th><th>Queue</th><th>Routing Key</th></tr></thead>
 		<tbody id="bindings"><td colspan="3">Loading…</td></tbody>
 	</table>
+
+	<h2>Messages</h2>
+	<div class="filter">
+		<select id="msg-queue" hx-get="/api/queues" hx-trigger="load" hx-target="#msg-queue" hx-swap="outerHTML">
+			<option value="">Select queue…</option>
+		</select>
+		<input type="text" id="msg-queue-input" placeholder="Queue name…"
+			hx-get="/api/messages" hx-trigger="keyup changed delay:300ms"
+			hx-target="#messages" hx-vals='js:{queue: document.getElementById("msg-queue-input").value}'>
+	</div>
+	<table hx-get="/api/messages" hx-trigger="load" hx-target="#messages">
+		<thead><tr><th>Delivery Tag</th><th>Payload</th><th>Exchange</th><th>Routing Key</th><th>Timestamp</th></tr></thead>
+		<tbody id="messages"><td colspan="5">Loading…</td></tbody>
+	</table>
 </body>
 </html>
