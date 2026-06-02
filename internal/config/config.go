@@ -41,6 +41,8 @@ type Web struct {
 	Listen     string `toml:"listen"`      // HTTP bind address,
 		// e.g. "0.0.0.0:15672"
 	PathPrefix string `toml:"path_prefix"` // URL prefix for reverse-proxy support
+	Username   string `toml:"username"`   // management UI login user
+	Password   string `toml:"password"`   // management UI login password
 }
 
 // Metrics holds Prometheus metrics export configuration.
@@ -128,6 +130,8 @@ func Default() *Config {
 			Enabled:    true,
 			Listen:     "0.0.0.0:15672",
 			PathPrefix: "/",
+			Username:   "admin",
+			Password:   "admin",
 		},
 		Memory: Memory{
 			CompressionThreshold: 0,

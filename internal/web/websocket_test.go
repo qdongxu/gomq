@@ -62,7 +62,7 @@ func TestBroadcasterNilHub(t *testing.T) {
 
 func TestServerWithWebSocket(t *testing.T) {
 	hub := NewHub()
-	srv := NewServerWithWebSocket(hub)
+	srv := NewServerWithWebSocket(hub, AuthConfig{Username: "admin", Password: "admin"})
 
 	// Verify WebSocket route is registered.
 	req := httptest.NewRequest("GET", "/ws", nil)

@@ -417,6 +417,8 @@ kill -HUP $(pgrep gomqd)
 | **速率限制与背压控制** | ✅ |
 | **Connection.CloseOk / Channel.CloseOk 处理器** | ✅ |
 | **Basic.Reject（重新入队 + 丢弃 + DLX）** | ✅ |
+| **WebSocket 实时推送（管理端动态更新）** | ✅ |
+| Web 管理端 — 会话与 CSRF 防护 | ✅ |
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |

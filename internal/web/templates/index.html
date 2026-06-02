@@ -3,7 +3,14 @@
 <head>
 	<meta charset="UTF-8">
 	<title>gomq management</title>
+	{{.CSRFMeta}}
 	<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+	<script>
+		document.body.addEventListener('htmx:configRequest', function(evt) {
+			var token = document.querySelector('meta[name="csrf-token"]')?.content;
+			if (token) { evt.detail.headers['X-CSRF-Token'] = token; }
+		});
+	</script>
 	<style>
 		body { font-family: system-ui, sans-serif; margin: 2rem; }
 		h1 { font-size: 1.5rem; }
