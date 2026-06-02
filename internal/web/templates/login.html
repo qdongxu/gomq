@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>gomq login</title>
+	<style>
+		body { font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
+		form { background: #fff; padding: 2rem; border-radius: .5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 20rem; }
+		h1 { font-size: 1.25rem; margin: 0 0 1.5rem; }
+		label { display: block; margin-bottom: .25rem; font-size: .875rem; color: #555; }
+		input { width: 100%; padding: .5rem; border: 1px solid #ccc; border-radius: .25rem; margin-bottom: 1rem; box-sizing: border-box; }
+		button { width: 100%; padding: .5rem; background: #0066cc; color: #fff; border: none; border-radius: .25rem; cursor: pointer; }
+		button:hover { background: #005bb5; }
+		.error { color: #cc0000; font-size: .875rem; margin-bottom: 1rem; }
+	</style>
+</head>
+<body>
+	<form method="POST" action="/api/login">
+		<h1>🔧 gomq login</h1>
+		{{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+		<label for="username">Username</label>
+		<input type="text" id="username" name="username" required autofocus>
+		<label for="password">Password</label>
+		<input type="password" id="password" name="password" required>
+		<button type="submit">Sign in</button>
+	</form>
+</body>
+</html>

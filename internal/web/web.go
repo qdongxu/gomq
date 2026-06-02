@@ -13,35 +13,65 @@ var indexHTML string
 
 // Server wraps HTTP handlers for the management UI.
 type Server struct {
-	mux *http.ServeMux
+	mux        *http.ServeMux
+	store      *SessionStore
+	auth       *AuthMiddleware
+	csrf       *CSRFMiddleware
 }
 
+
 // NewServer creates a web UI server with routes registered.
-func NewServer() *Server {
-	s := &Server{mux: http.NewServeMux()}
+func NewServer(authCfg AuthConfig) *Server {
+	store := NewSessionStore()
+	auth := NewAuthMiddleware(store, authCfg)
+	csrf := NewCSRFMiddleware(store)
+	s := &Server{
+		mux:   http.NewServeMux(),
+		store: store,
+		auth:  auth,
+		csrf:  csrf,
+	}
 	s.registerRoutes()
 	return s
 }
 
 // NewServerWithWebSocket creates a server with a WebSocket hub.
-func NewServerWithWebSocket(hub *Hub) *Server {
-	s := &Server{mux: http.NewServeMux()}
+func NewServerWithWebSocket(hub *Hub, authCfg AuthConfig) *Server {
+	store := NewSessionStore()
+	auth := NewAuthMiddleware(store, authCfg)
+	csrf := NewCSRFMiddleware(store)
+	s := &Server{
+		mux:   http.NewServeMux(),
+		store: store,
+		auth:  auth,
+		csrf:  csrf,
+	}
 	s.registerRoutes()
 	s.registerWebSocket(hub)
 	return s
 }
 
+
 func (s *Server) registerRoutes() {
-	s.mux.HandleFunc("/", s.handleIndex)
-	s.mux.HandleFunc("/api/overview", s.handleOverview)
-	s.mux.HandleFunc("/api/admin", s.handleAdmin)
-	s.mux.HandleFunc("/api/exchanges", s.handleExchanges)
-	s.mux.HandleFunc("/api/queues", s.handleQueues)
-	s.mux.HandleFunc("/api/bindings", s.handleBindings)
-	s.mux.HandleFunc("/api/connections", s.handleConnections)
-	s.mux.HandleFunc("/api/channels", s.handleChannels)
-	s.mux.HandleFunc("/api/messages", s.handleMessages)
+	s.mux.HandleFunc("/", s.wrap(s.handleIndex))
+	s.mux.HandleFunc("/login", s.wrap(s.handleLoginPage))
+	s.mux.HandleFunc("/api/login", s.wrap(s.auth.HandleLogin))
+	s.mux.HandleFunc("/api/logout", s.wrap(s.auth.HandleLogout))
+	s.mux.HandleFunc("/api/overview", s.wrap(s.handleOverview))
+	s.mux.HandleFunc("/api/admin", s.wrap(s.handleAdmin))
+	s.mux.HandleFunc("/api/exchanges", s.wrap(s.handleExchanges))
+	s.mux.HandleFunc("/api/queues", s.wrap(s.handleQueues))
+	s.mux.HandleFunc("/api/bindings", s.wrap(s.handleBindings))
+	s.mux.HandleFunc("/api/connections", s.wrap(s.handleConnections))
+	s.mux.HandleFunc("/api/channels", s.wrap(s.handleChannels))
+	s.mux.HandleFunc("/api/messages", s.wrap(s.handleMessages))
 }
+
+// wrap applies auth + csrf middleware.
+func (s *Server) wrap(h http.HandlerFunc) http.HandlerFunc {
+	return s.auth.Require(s.csrf.Protect(h))
+}
+
 
 func (s *Server) registerWebSocket(hub *Hub) {
 	s.mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
@@ -122,8 +152,21 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = indexTemplate.Execute(w, nil)
+	data := map[string]interface{}{
+		"CSRFMeta": template.HTML(CSRFMetaTag(s.csrf.CSRFTokenForRequest(r))),
+	}
+	_ = indexTemplate.Execute(w, data)
 }
+
+func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_ = loginTemplate.Execute(w, nil)
+}
+
 
 func (s *Server) handleConnections(w http.ResponseWriter, r *http.Request) {
 	if broker == nil {
@@ -139,3 +182,9 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 }
 
 var indexTemplate = template.Must(template.New("index").Parse(indexHTML))
+
+//go:embed templates/login.html
+var loginHTML string
+
+var loginTemplate = template.Must(template.New("login").Parse(loginHTML))
+

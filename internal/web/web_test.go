@@ -29,8 +29,9 @@ func (m *mockBroker) Overview() OverviewInfo             { return m.overview }
 func (m *mockBroker) Admin() AdminInfo                   { return m.admin }
 
 func TestHandleIndex(t *testing.T) {
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(loginCookie(srv))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -71,9 +72,10 @@ func TestHandleExchanges(t *testing.T) {
 	})
 	defer SetExchangesBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/exchanges", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -106,9 +108,10 @@ func TestHandleExchangesFilter(t *testing.T) {
 	})
 	defer SetExchangesBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET",
 		"/api/exchanges?type=direct", nil)
+	req.AddCookie(loginCookie(srv))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -132,9 +135,10 @@ func TestHandleQueues(t *testing.T) {
 	})
 	defer SetQueuesBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/queues", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	var out []QueueInfo
@@ -163,9 +167,10 @@ func TestHandleQueuesFilter(t *testing.T) {
 	})
 	defer SetQueuesBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET",
 		"/api/queues?durable=true", nil)
+	req.AddCookie(loginCookie(srv))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -187,9 +192,10 @@ func TestHandleBindings(t *testing.T) {
 	})
 	defer SetBindingsBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/bindings", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	var out []BindingInfo
@@ -213,9 +219,10 @@ func TestHandleBindingsFilter(t *testing.T) {
 	})
 	defer SetBindingsBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET",
 		"/api/bindings?exchange=ex1", nil)
+	req.AddCookie(loginCookie(srv))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -237,9 +244,10 @@ func TestHandleConnections(t *testing.T) {
 	})
 	defer SetBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/connections", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -268,9 +276,10 @@ func TestHandleChannels(t *testing.T) {
 	})
 	defer SetChannelsBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/channels", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -299,9 +308,10 @@ func TestHandleChannelsFilter(t *testing.T) {
 	})
 	defer SetChannelsBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET",
 		"/api/channels?connection=127.0.0.1:12345", nil)
+	req.AddCookie(loginCookie(srv))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -327,9 +337,10 @@ func TestHandleOverview(t *testing.T) {
 	})
 	defer SetOverviewBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/overview", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -360,9 +371,10 @@ func TestHandleAdmin(t *testing.T) {
 	})
 	defer SetAdminBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/admin", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -393,9 +405,10 @@ func TestHandleMessages(t *testing.T) {
 	})
 	defer SetMessagesBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/messages?queue=test&limit=2&offset=0", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -418,9 +431,10 @@ func TestHandleMessagesEmptyQueue(t *testing.T) {
 	SetMessagesBroker(&mockBroker{messages: []MessageInfo{}})
 	defer SetMessagesBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/messages?queue=empty", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	var out []MessageInfo
@@ -436,9 +450,10 @@ func TestHandleMessagesNoQueue(t *testing.T) {
 	SetMessagesBroker(&mockBroker{messages: []MessageInfo{}})
 	defer SetMessagesBroker(nil)
 
-	srv := NewServer()
+	srv := NewServer(AuthConfig{Username: "admin", Password: "admin"})
 	req := httptest.NewRequest("GET", "/api/messages", nil)
 	w := httptest.NewRecorder()
+	req.AddCookie(loginCookie(srv))
 	srv.ServeHTTP(w, req)
 
 	var out []MessageInfo
@@ -448,6 +463,11 @@ func TestHandleMessagesNoQueue(t *testing.T) {
 	if len(out) != 0 {
 		t.Fatalf("expected empty, got %d", len(out))
 	}
+}
+
+func loginCookie(srv *Server) *http.Cookie {
+	id, _ := srv.store.Create("admin")
+	return SessionCookie(id)
 }
 
 func contains(s, substr string) bool {

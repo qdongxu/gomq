@@ -423,6 +423,8 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | **Rate limiting & backpressure** | ✅ |
 | **Connection.CloseOk / Channel.CloseOk handlers** | ✅ |
 | **Basic.Reject (requeue + no-requeue + DLX)** | ✅ |
+| **WebSocket realtime push (management UI)** | ✅ |
+| Web management UI — Session & CSRF protection | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
 | Federation / Shovel | ✅ |
 | **Config hot reload** | ✅ |

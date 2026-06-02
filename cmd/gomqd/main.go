@@ -218,7 +218,10 @@ func main() {
 	if cfg.Web.Enabled {
 		webBroker = server.NewWebBroker(srv)
 		web.SetBroker(webBroker)
-		ws := web.NewServer()
+		ws := web.NewServer(web.AuthConfig{
+			Username: cfg.Web.Username,
+			Password: cfg.Web.Password,
+		})
 		webAddr := "0.0.0.0:15672"
 		if cfg.Web.Listen != "" {
 			webAddr = cfg.Web.Listen
