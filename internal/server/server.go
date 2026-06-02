@@ -56,6 +56,8 @@ type Server struct {
 	pipeline    *Pipeline
 	workerPool  *WorkerPool
 	flushSched  *FlushScheduler
+	auditLog     *AuditLog
+	messageTracer *MessageTracer
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -103,6 +105,8 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		pipeline:    NewPipeline(publisher, DefaultPipelineConfig()),
 		workerPool:  NewWorkerPool(0, 256),
 		flushSched:  NewFlushScheduler(50 * time.Millisecond),
+		auditLog:     NewAuditLog(false, 0),
+		messageTracer: NewMessageTracer(false, 0),
 	}
 }
 
@@ -487,6 +491,34 @@ func (s *Server) Config() *config.Config {
 	return s.cfg
 }
 
+// AuditLog returns the server's audit log instance.
+func (s *Server) AuditLog() *AuditLog {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.auditLog
+}
+
+// MessageTracer returns the server's message tracer instance.
+func (s *Server) MessageTracer() *MessageTracer {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.messageTracer
+}
+
+// SetAuditLog replaces the audit log instance (used by tests).
+func (s *Server) SetAuditLog(al *AuditLog) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.auditLog = al
+}
+
+// SetMessageTracer replaces the message tracer instance (used by tests).
+func (s *Server) SetMessageTracer(mt *MessageTracer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.messageTracer = mt
+}
+
 // ReloadConfig applies a new configuration to the running server.
 // Only reloadable sections are applied; non-reloadable changes are
 // ignored (the caller should log warnings for them).
@@ -532,8 +564,11 @@ func (s *Server) ReloadConfig(cfg *config.Config) error {
 		s.backPressure = nil
 	}
 
-	// Memory settings — propagate to the message store.
-	// (Store limits are updated via the store's own options.)
+	// Audit & trace settings.
+	s.auditLog.SetEnabled(cfg.Audit.Enabled)
+	s.auditLog.SetMaxSize(cfg.Audit.MaxEvents)
+	s.messageTracer.SetEnabled(cfg.Audit.TraceEnabled)
+	s.messageTracer.SetMaxSize(cfg.Audit.TraceMaxEvents)
 
 	s.cfg = cfg
 	_ = old // old config no longer referenced
