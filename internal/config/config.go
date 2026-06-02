@@ -79,6 +79,14 @@ type Auth struct {
 	// intentionally empty for now
 }
 
+// Audit holds audit log and message trace configuration.
+type Audit struct {
+	Enabled        bool `toml:"enabled"`        // enable audit logging
+	MaxEvents      int  `toml:"max_events"`      // ring buffer size for audit events (0=unlimited)
+	TraceEnabled   bool `toml:"trace_enabled"`   // enable message lifecycle tracing
+	TraceMaxEvents int  `toml:"trace_max_events"` // ring buffer size for traces (0=unlimited)
+}
+
 // ACLRule is a single access-control entry.
 type ACLRule struct {
 	User         string `toml:"user"`
@@ -101,6 +109,7 @@ type Config struct {
 	Cluster    Cluster    `toml:"cluster"`
 	Web        Web        `toml:"web"`
 	Auth       Auth       `toml:"auth"`
+	Audit      Audit      `toml:"audit"`
 	ACL        ACL        `toml:"acl"`
 	TLS        TLS        `toml:"tls"`
 	Metrics    Metrics    `toml:"metrics"`
@@ -137,6 +146,12 @@ func Default() *Config {
 			CompressionThreshold: 0,
 			MaxInMemoryMessages:  0,
 			PageDir:              "/var/lib/gomq/pages",
+		},
+		Audit: Audit{
+			Enabled:        false,
+			MaxEvents:      10000,
+			TraceEnabled:   false,
+			TraceMaxEvents: 10000,
 		},
 		Management: Management{
 			HealthEnabled: true,

@@ -425,6 +425,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | **Basic.Reject (requeue + no-requeue + DLX)** | ✅ |
 | **WebSocket realtime push (management UI)** | ✅ |
 | Web management UI — Session & CSRF protection | ✅ |
+| **Message tracing & audit logging** | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
 | Federation / Shovel | ✅ |
 | **Config hot reload** | ✅ |
