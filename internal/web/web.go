@@ -65,6 +65,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/connections", s.wrap(s.handleConnections))
 	s.mux.HandleFunc("/api/channels", s.wrap(s.handleChannels))
 	s.mux.HandleFunc("/api/messages", s.wrap(s.handleMessages))
+	s.mux.HandleFunc("/api/cluster", s.wrap(s.handleCluster))
 }
 
 // wrap applies auth + csrf middleware.

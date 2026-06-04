@@ -57,6 +57,9 @@ func TestHandleIndex(t *testing.T) {
 	if !contains(body, "Messages") {
 		t.Fatal("missing Messages section in index response")
 	}
+	if !contains(body, "Cluster Nodes") {
+		t.Fatal("missing Cluster Nodes section in index response")
+	}
 }
 
 func TestHandleExchanges(t *testing.T) {
