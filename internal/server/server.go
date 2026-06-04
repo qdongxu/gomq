@@ -45,6 +45,8 @@ type Server struct {
 	discovery   *cluster.Discovery
 	membership  *cluster.Membership
 	gossip      *cluster.Gossip
+	cluster     *cluster.Cluster
+	raftNode    *cluster.RaftNode
 	mirrors     *MirrorManager
 	plugins     *PluginManager
 	federations *FederationManager
@@ -482,6 +484,55 @@ func (s *Server) SetBackPressure(bp *BackPressure) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.backPressure = bp
+}
+
+// SetCluster injects the cluster state.
+func (s *Server) SetCluster(c *cluster.Cluster) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.cluster = c
+}
+
+// Cluster returns the cluster state.
+func (s *Server) Cluster() *cluster.Cluster {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.cluster
+}
+
+// SetMembership injects the membership tracker.
+func (s *Server) SetMembership(m *cluster.Membership) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.membership = m
+}
+
+// Membership returns the membership tracker.
+func (s *Server) Membership() *cluster.Membership {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.membership
+}
+
+// SetRaftNode injects the Raft consensus node.
+func (s *Server) SetRaftNode(r *cluster.RaftNode) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.raftNode = r
+}
+
+// RaftNode returns the Raft consensus node.
+func (s *Server) RaftNode() *cluster.RaftNode {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.raftNode
+}
+
+// ConnectionCount returns the number of active connections.
+func (s *Server) ConnectionCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.connMap)
 }
 
 // Config returns the current runtime configuration.

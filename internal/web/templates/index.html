@@ -111,5 +111,11 @@
 		<thead><tr><th>Delivery Tag</th><th>Payload</th><th>Exchange</th><th>Routing Key</th><th>Timestamp</th></tr></thead>
 		<tbody id="messages"><td colspan="5">Loading…</td></tbody>
 	</table>
+
+	<h2>Cluster Nodes</h2>
+	<table hx-get="/api/cluster" hx-trigger="load, every 5s" hx-target="#cluster">
+		<thead><tr><th>Node ID</th><th>Address</th><th>Status</th><th>Role</th><th>Uptime</th><th>Conns</th><th>Msg In</th><th>Msg Out</th></tr></thead>
+		<tbody id="cluster"><td colspan="8">Loading…</td></tbody>
+	</table>
 </body>
 </html>

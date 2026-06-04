@@ -222,3 +222,88 @@ func (wb *WebBroker) Admin() web.AdminInfo {
 		Users:   users,
 	}
 }
+
+// ClusterList returns all known cluster nodes for the UI.
+func (wb *WebBroker) ClusterList() []web.ClusterNodeInfo {
+	membership := wb.srv.Membership()
+	cluster := wb.srv.Cluster()
+	raftNode := wb.srv.RaftNode()
+	if membership == nil {
+		return []web.ClusterNodeInfo{}
+	}
+
+	members := membership.Members()
+	out := make([]web.ClusterNodeInfo, 0, len(members))
+
+	var leaderID string
+	if cluster != nil {
+		leaderID = cluster.Leader()
+	}
+
+	var localID string
+	if cluster != nil {
+		localID = cluster.LocalID()
+	}
+
+	// Aggregate local message stats.
+	var localMsgIn, localMsgOut int64
+	for _, ex := range wb.srv.ExchangeManager().List() {
+		inCnt, outCnt := wb.srv.Publisher().ExchangeStats(ex.Name)
+		localMsgIn += inCnt
+		localMsgOut += outCnt
+	}
+
+	for _, m := range members {
+		role := "follower"
+		if m.ID == leaderID {
+			role = "leader"
+		}
+
+		uptime := "unknown"
+		conns := 0
+		msgIn := int64(0)
+		msgOut := int64(0)
+		logIndex := uint64(0)
+		logTerm := uint64(0)
+		heartbeat := "unknown"
+
+		if m.ID == localID {
+			uptime = clusterUptimeSince(wb.srv.StartTime())
+			conns = wb.srv.ConnectionCount()
+			msgIn = localMsgIn
+			msgOut = localMsgOut
+			if raftNode != nil {
+				logIndex = raftNode.CommitIndex()
+				logTerm = raftNode.Term()
+			}
+			heartbeat = "0ms" // local node, no latency
+		}
+
+		out = append(out, web.ClusterNodeInfo{
+			ID:        m.ID,
+			Addr:      m.Addr,
+			Status:    m.Status.String(),
+			Role:      role,
+			Uptime:    uptime,
+			Conns:     conns,
+			MsgIn:     msgIn,
+			MsgOut:    msgOut,
+			LogIndex:  logIndex,
+			LogTerm:   logTerm,
+			Heartbeat: heartbeat,
+		})
+	}
+	return out
+}
+
+// clusterUptimeSince formats duration as human-readable string.
+func clusterUptimeSince(t time.Time) string {
+	d := time.Since(t)
+	if d < time.Minute {
+		return d.Round(time.Second).String()
+	}
+	if d < time.Hour {
+		return d.Round(time.Minute).String()
+	}
+	return d.Round(time.Minute).String()
+}

@@ -175,6 +175,8 @@ func main() {
 		discovery = d
 		membership = m
 		gossip = g
+		srv.SetCluster(c)
+		srv.SetMembership(m)
 		log.Printf("cluster discovery enabled, node %s @ %s",
 			cfg.Cluster.NodeID, addr)
 	}
@@ -218,6 +220,7 @@ func main() {
 	if cfg.Web.Enabled {
 		webBroker = server.NewWebBroker(srv)
 		web.SetBroker(webBroker)
+		web.SetClusterBroker(webBroker)
 		ws := web.NewServer(web.AuthConfig{
 			Username: cfg.Web.Username,
 			Password: cfg.Web.Password,
