@@ -303,7 +303,7 @@ listen = "0.0.0.0:15672"
 path_prefix = "/"
 ```
 
-管理端基于 **htmx** 构建，提供连接、信道、交换机、队列、绑定和管理控制的实时视图。
+管理端基于 **htmx** 构建，提供连接、信道、交换机、队列、绑定、集群节点和管理控制的实时视图。
 
 ### 管理端点（健康检查与就绪探针）
 
@@ -403,6 +403,7 @@ kill -HUP $(pgrep gomqd)
 | **Web 管理端 — Messages 页面** | ✅ |
 | Web 管理端 — Bindings 页面 | ✅ |
 | Web 管理端 — Admin 页面 | ✅ |
+| Web 管理端 — 集群节点页面 | ✅ |
 | Quorum Queue（基于 Raft 的镜像复制） | ✅ |
 | **Quorum Queue — 多节点 Raft 网络层** | ✅ |
 | Exchange-to-Exchange 绑定 | ✅ |
