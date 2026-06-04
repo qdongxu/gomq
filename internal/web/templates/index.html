@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta charset="UTF-8">
-	<title>gomq management</title>
+	<title>{{i18n "title"}}</title>
 	{{.CSRFMeta}}
 	<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 	<script>
@@ -10,6 +10,12 @@
 			var token = document.querySelector('meta[name="csrf-token"]')?.content;
 			if (token) { evt.detail.headers['X-CSRF-Token'] = token; }
 		});
+		function setLang(lang) {
+			var fd = new FormData();
+			fd.append('lang', lang);
+			fetch('/api/lang', {method: 'POST', body: fd})
+				.then(function() { location.reload(); });
+		}
 	</script>
 	<style>
 		body { font-family: system-ui, sans-serif; margin: 2rem; }
@@ -25,97 +31,106 @@
 		tr:nth-child(even) { background: #fafafa; }
 		.filter { margin: .5rem 0; }
 		.filter input { padding: .25rem .5rem; border: 1px solid #ccc; border-radius: .25rem; }
+		.lang-bar { float: right; }
+		.lang-bar select { padding: .25rem .5rem; }
 	</style>
 </head>
 <body>
-	<h1>🔧 gomq management</h1>
+	<div class="lang-bar">
+		<select onchange="setLang(this.value)">
+		{{range .Langs}}
+			<option value="{{.}}"{{if eq . $.Lang}} selected{{end}}>{{i18n (print "lang." .)}}</option>
+		{{end}}
+		</select>
+	</div>
+	<h1>🔧 {{i18n "title"}}</h1>
 
-	<h2>Overview</h2>
+	<h2>{{i18n "overview"}}</h2>
 	<div class="overview" hx-get="/api/overview" hx-trigger="load, every 5s">
-		<div class="card"><h3>Connections</h3><p>–</p></div>
-		<div class="card"><h3>Channels</h3><p>–</p></div>
-		<div class="card"><h3>Exchanges</h3><p>–</p></div>
-		<div class="card"><h3>Queues</h3><p>–</p></div>
-		<div class="card"><h3>Consumers</h3><p>–</p></div>
-		<div class="card"><h3>Messages</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "overview.connections"}}</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "overview.channels"}}</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "overview.exchanges"}}</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "overview.queues"}}</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "overview.consumers"}}</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "overview.messages"}}</h3><p>–</p></div>
 	</div>
 
-	<h2>Admin</h2>
+	<h2>{{i18n "admin"}}</h2>
 	<div class="overview" hx-get="/api/admin" hx-trigger="load, every 5s">
-		<div class="card"><h3>Version</h3><p>–</p></div>
-		<div class="card"><h3>Uptime</h3><p>–</p></div>
-		<div class="card"><h3>VHosts</h3><p>–</p></div>
-		<div class="card"><h3>Users</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "admin.version"}}</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "admin.uptime"}}</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "admin.vhosts"}}</h3><p>–</p></div>
+		<div class="card"><h3>{{i18n "admin.users"}}</h3><p>–</p></div>
 	</div>
 
-	<h2>Connections</h2>
+	<h2>{{i18n "connections"}}</h2>
 	<table hx-get="/api/connections" hx-trigger="load" hx-target="#connections">
-		<thead><tr><th>Remote Address</th><th>State</th><th>Channels</th><th>Heartbeat</th></tr></thead>
-		<tbody id="connections"><td colspan="4">Loading…</td></tbody>
+		<thead><tr><th>{{i18n "connections.remote_addr"}}</th><th>{{i18n "connections.state"}}</th><th>{{i18n "connections.channels"}}</th><th>{{i18n "connections.heartbeat"}}</th></tr></thead>
+		<tbody id="connections"><td colspan="4">{{i18n "loading"}}</td></tbody>
 	</table>
 
-	<h2>Channels</h2>
+	<h2>{{i18n "channels"}}</h2>
 	<div class="filter">
-		<input type="text" id="conn-filter" placeholder="Filter by connection…"
+		<input type="text" id="conn-filter" placeholder="{{i18n "channels.filter_placeholder"}}"
 			hx-get="/api/channels" hx-trigger="keyup changed delay:300ms"
 			hx-target="#channels" hx-vals='js:{connection: document.getElementById("conn-filter").value}'>
 	</div>
 	<table hx-get="/api/channels" hx-trigger="load" hx-target="#channels">
-		<thead><tr><th>ID</th><th>Connection</th><th>State</th><th>Consumers</th><th>Unacked</th><th>Prefetch</th></tr></thead>
-		<tbody id="channels"><td colspan="6">Loading…</td></tbody>
+		<thead><tr><th>{{i18n "channels.id"}}</th><th>{{i18n "channels.connection"}}</th><th>{{i18n "channels.state"}}</th><th>{{i18n "channels.consumers"}}</th><th>{{i18n "channels.unacked"}}</th><th>{{i18n "channels.prefetch"}}</th></tr></thead>
+		<tbody id="channels"><td colspan="6">{{i18n "loading"}}</td></tbody>
 	</table>
 
-	<h2>Exchanges</h2>
+	<h2>{{i18n "exchanges"}}</h2>
 	<div class="filter">
-		<input type="text" id="ex-filter" placeholder="Filter by type…"
+		<input type="text" id="ex-filter" placeholder="{{i18n "exchanges.filter_placeholder"}}"
 			hx-get="/api/exchanges" hx-trigger="keyup changed delay:300ms"
 			hx-target="#exchanges" hx-vals='js:{type: document.getElementById("ex-filter").value}'>
 	</div>
 	<table hx-get="/api/exchanges" hx-trigger="load" hx-target="#exchanges">
-		<thead><tr><th>Name</th><th>Type</th><th>Durable</th><th>Bindings</th><th>In</th><th>Out</th></tr></thead>
-		<tbody id="exchanges"><td colspan="6">Loading…</td></tbody>
+		<thead><tr><th>{{i18n "exchanges.name"}}</th><th>{{i18n "exchanges.type"}}</th><th>{{i18n "exchanges.durable"}}</th><th>{{i18n "exchanges.bindings"}}</th><th>{{i18n "exchanges.in"}}</th><th>{{i18n "exchanges.out"}}</th></tr></thead>
+		<tbody id="exchanges"><td colspan="6">{{i18n "loading"}}</td></tbody>
 	</table>
 
-	<h2>Queues</h2>
+	<h2>{{i18n "queues"}}</h2>
 	<div class="filter">
-		<input type="text" id="q-filter" placeholder="Filter by durable (true/false)…"
+		<input type="text" id="q-filter" placeholder="{{i18n "queues.filter_placeholder"}}"
 			hx-get="/api/queues" hx-trigger="keyup changed delay:300ms"
 			hx-target="#queues" hx-vals='js:{durable: document.getElementById("q-filter").value}'>
 	</div>
 	<table hx-get="/api/queues" hx-trigger="load" hx-target="#queues">
-		<thead><tr><th>Name</th><th>Durable</th><th>Messages</th><th>Consumers</th><th>Bindings</th><th>Memory</th></tr></thead>
-		<tbody id="queues"><td colspan="6">Loading…</td></tbody>
+		<thead><tr><th>{{i18n "queues.name"}}</th><th>{{i18n "queues.durable"}}</th><th>{{i18n "queues.messages"}}</th><th>{{i18n "queues.consumers"}}</th><th>{{i18n "queues.bindings"}}</th><th>{{i18n "queues.memory"}}</th></tr></thead>
+		<tbody id="queues"><td colspan="6">{{i18n "loading"}}</td></tbody>
 	</table>
 
-	<h2>Bindings</h2>
+	<h2>{{i18n "bindings"}}</h2>
 	<div class="filter">
-		<input type="text" id="bind-filter" placeholder="Filter by exchange…"
+		<input type="text" id="bind-filter" placeholder="{{i18n "bindings.filter_placeholder"}}"
 			hx-get="/api/bindings" hx-trigger="keyup changed delay:300ms"
 			hx-target="#bindings" hx-vals='js:{exchange: document.getElementById("bind-filter").value}'>
 	</div>
 	<table hx-get="/api/bindings" hx-trigger="load" hx-target="#bindings">
-		<thead><tr><th>Exchange</th><th>Queue</th><th>Routing Key</th></tr></thead>
-		<tbody id="bindings"><td colspan="3">Loading…</td></tbody>
+		<thead><tr><th>{{i18n "bindings.exchange"}}</th><th>{{i18n "bindings.queue"}}</th><th>{{i18n "bindings.routing_key"}}</th></tr></thead>
+		<tbody id="bindings"><td colspan="3">{{i18n "loading"}}</td></tbody>
 	</table>
 
-	<h2>Messages</h2>
+	<h2>{{i18n "messages"}}</h2>
 	<div class="filter">
 		<select id="msg-queue" hx-get="/api/queues" hx-trigger="load" hx-target="#msg-queue" hx-swap="outerHTML">
-			<option value="">Select queue…</option>
+			<option value="">{{i18n "messages.select_queue"}}</option>
 		</select>
-		<input type="text" id="msg-queue-input" placeholder="Queue name…"
+		<input type="text" id="msg-queue-input" placeholder="{{i18n "messages.queue_placeholder"}}"
 			hx-get="/api/messages" hx-trigger="keyup changed delay:300ms"
 			hx-target="#messages" hx-vals='js:{queue: document.getElementById("msg-queue-input").value}'>
 	</div>
 	<table hx-get="/api/messages" hx-trigger="load" hx-target="#messages">
-		<thead><tr><th>Delivery Tag</th><th>Payload</th><th>Exchange</th><th>Routing Key</th><th>Timestamp</th></tr></thead>
-		<tbody id="messages"><td colspan="5">Loading…</td></tbody>
+		<thead><tr><th>{{i18n "messages.delivery_tag"}}</th><th>{{i18n "messages.payload"}}</th><th>{{i18n "messages.exchange"}}</th><th>{{i18n "messages.routing_key"}}</th><th>{{i18n "messages.timestamp"}}</th></tr></thead>
+		<tbody id="messages"><td colspan="5">{{i18n "loading"}}</td></tbody>
 	</table>
 
-	<h2>Cluster Nodes</h2>
+	<h2>{{i18n "cluster_nodes"}}</h2>
 	<table hx-get="/api/cluster" hx-trigger="load, every 5s" hx-target="#cluster">
-		<thead><tr><th>Node ID</th><th>Address</th><th>Status</th><th>Role</th><th>Uptime</th><th>Conns</th><th>Msg In</th><th>Msg Out</th></tr></thead>
-		<tbody id="cluster"><td colspan="8">Loading…</td></tbody>
+		<thead><tr><th>{{i18n "cluster.node_id"}}</th><th>{{i18n "cluster.address"}}</th><th>{{i18n "cluster.status"}}</th><th>{{i18n "cluster.role"}}</th><th>{{i18n "cluster.uptime"}}</th><th>{{i18n "cluster.conns"}}</th><th>{{i18n "cluster.msg_in"}}</th><th>{{i18n "cluster.msg_out"}}</th></tr></thead>
+		<tbody id="cluster"><td colspan="8">{{i18n "loading"}}</td></tbody>
 	</table>
 </body>
 </html>

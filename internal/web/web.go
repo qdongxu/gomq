@@ -11,12 +11,22 @@ import (
 //go:embed templates/index.html
 var indexHTML string
 
+//go:embed static/i18n/en.json
+var i18nEN []byte
+
+//go:embed static/i18n/zh.json
+var i18nZH []byte
+
+//go:embed static/i18n/ja.json
+var i18nJA []byte
+
 // Server wraps HTTP handlers for the management UI.
 type Server struct {
 	mux        *http.ServeMux
 	store      *SessionStore
 	auth       *AuthMiddleware
 	csrf       *CSRFMiddleware
+	i18n       *I18n
 }
 
 
@@ -25,11 +35,16 @@ func NewServer(authCfg AuthConfig) *Server {
 	store := NewSessionStore()
 	auth := NewAuthMiddleware(store, authCfg)
 	csrf := NewCSRFMiddleware(store)
+	i18n := NewI18n()
+	_ = i18n.Load("en", i18nEN)
+	_ = i18n.Load("zh", i18nZH)
+	_ = i18n.Load("ja", i18nJA)
 	s := &Server{
 		mux:   http.NewServeMux(),
 		store: store,
 		auth:  auth,
 		csrf:  csrf,
+		i18n:  i18n,
 	}
 	s.registerRoutes()
 	return s
@@ -40,11 +55,16 @@ func NewServerWithWebSocket(hub *Hub, authCfg AuthConfig) *Server {
 	store := NewSessionStore()
 	auth := NewAuthMiddleware(store, authCfg)
 	csrf := NewCSRFMiddleware(store)
+	i18n := NewI18n()
+	_ = i18n.Load("en", i18nEN)
+	_ = i18n.Load("zh", i18nZH)
+	_ = i18n.Load("ja", i18nJA)
 	s := &Server{
 		mux:   http.NewServeMux(),
 		store: store,
 		auth:  auth,
 		csrf:  csrf,
+		i18n:  i18n,
 	}
 	s.registerRoutes()
 	s.registerWebSocket(hub)
@@ -66,6 +86,8 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/channels", s.wrap(s.handleChannels))
 	s.mux.HandleFunc("/api/messages", s.wrap(s.handleMessages))
 	s.mux.HandleFunc("/api/cluster", s.wrap(s.handleCluster))
+	s.mux.HandleFunc("/api/i18n", s.wrap(s.handleI18n))
+	s.mux.HandleFunc("/api/lang", s.wrap(s.handleSetLang))
 }
 
 // wrap applies auth + csrf middleware.
@@ -152,11 +174,24 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	lang := s.i18n.DetectLang(r)
+	fn := template.FuncMap{
+		"i18n": func(key string) string {
+			return s.i18n.T(lang, key)
+		},
+	}
+	tmpl, err := template.New("index").Funcs(fn).Parse(indexHTML)
+	if err != nil {
+		http.Error(w, "template error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := map[string]interface{}{
 		"CSRFMeta": template.HTML(CSRFMetaTag(s.csrf.CSRFTokenForRequest(r))),
+		"Lang":     lang,
+		"Langs":    s.i18n.Supported(),
 	}
-	_ = indexTemplate.Execute(w, data)
+	_ = tmpl.Execute(w, data)
 }
 
 func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
@@ -181,8 +216,6 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
 }
-
-var indexTemplate = template.Must(template.New("index").Parse(indexHTML))
 
 //go:embed templates/login.html
 var loginHTML string
