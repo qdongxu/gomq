@@ -309,7 +309,7 @@ listen = "0.0.0.0:15672"
 path_prefix = "/"
 ```
 
-The management UI is built with **htmx** and provides real-time views of connections, channels, exchanges, queues, bindings, cluster nodes, and admin controls.
+The management UI is built with **htmx** and provides real-time views of connections, channels, exchanges, queues, bindings, cluster nodes, and admin controls. Multi-language support (English, 中文, 日本語) is available via browser language detection or manual selection.
 
 ### Management Endpoints (Health & Readiness)
 
@@ -410,6 +410,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | Web management UI — Bindings page | ✅ |
 | Web management UI — Admin page | ✅ |
 | Web management UI — Cluster Nodes page | ✅ |
+| Web management UI — Internationalization (en/zh/ja) | ✅ |
 | Quorum Queue (Raft-based replication) | ✅ |
 | **Quorum Queue — Multi-node Raft network layer** | ✅ |
 | Exchange-to-Exchange Binding | ✅ |
