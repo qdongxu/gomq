@@ -409,6 +409,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | **Web management UI — Messages page** | ✅ |
 | Web management UI — Bindings page | ✅ |
 | Web management UI — Admin page | ✅ |
+| Web management UI — VHost management page | ✅ |
 | Web management UI — Cluster Nodes page | ✅ |
 | Web management UI — Internationalization (en/zh/ja) | ✅ |
 | Quorum Queue (Raft-based replication) | ✅ |
