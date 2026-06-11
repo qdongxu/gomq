@@ -221,6 +221,7 @@ func main() {
 		webBroker = server.NewWebBroker(srv)
 		web.SetBroker(webBroker)
 		web.SetClusterBroker(webBroker)
+		web.SetVHostBroker(webBroker)
 		ws := web.NewServer(web.AuthConfig{
 			Username: cfg.Web.Username,
 			Password: cfg.Web.Password,

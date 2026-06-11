@@ -190,6 +190,33 @@ func (wb *WebBroker) MessageList(queueName string, limit, offset int) []web.Mess
 
 const serverVersion = "0.1.0"
 
+// VHostList returns all VHosts for the UI.
+func (wb *WebBroker) VHostList() []web.VHostListInfo {
+	vhosts := wb.srv.VHostManager().List()
+	out := make([]web.VHostListInfo, 0, len(vhosts))
+	for _, vh := range vhosts {
+		out = append(out, web.VHostListInfo{
+			Name:        vh.Name,
+			Description: vh.Description,
+			Connections: wb.srv.ConnectionCount(), // all connections share VHost for now
+			Queues:      len(wb.srv.QueueManager().List()),
+			Exchanges:   len(wb.srv.ExchangeManager().List()),
+		})
+	}
+	return out
+}
+
+// CreateVHost creates a new VHost via the manager.
+func (wb *WebBroker) CreateVHost(name, description string) bool {
+	_, ok := wb.srv.VHostManager().Create(name, description)
+	return ok
+}
+
+// DeleteVHost deletes a VHost via the manager.
+func (wb *WebBroker) DeleteVHost(name string) bool {
+	return wb.srv.VHostManager().Delete(name)
+}
+
 // Admin returns server admin data for the UI.
 func (wb *WebBroker) Admin() web.AdminInfo {
 	uptime := time.Since(wb.srv.StartTime())
@@ -202,12 +229,13 @@ func (wb *WebBroker) Admin() web.AdminInfo {
 		uptimeStr = uptime.Round(time.Minute).String()
 	}
 
-	vhosts := []web.VHostInfo{
-		{
-			Name:      "/",
+	vhosts := make([]web.VHostInfo, 0)
+	for _, vh := range wb.srv.VHostManager().List() {
+		vhosts = append(vhosts, web.VHostInfo{
+			Name:      vh.Name,
 			Exchanges: len(wb.srv.ExchangeManager().List()),
 			Queues:    len(wb.srv.QueueManager().List()),
-		},
+		})
 	}
 
 	// Users are not yet configurable via TOML; Auth struct is

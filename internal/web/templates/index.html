@@ -132,5 +132,20 @@
 		<thead><tr><th>{{i18n "cluster.node_id"}}</th><th>{{i18n "cluster.address"}}</th><th>{{i18n "cluster.status"}}</th><th>{{i18n "cluster.role"}}</th><th>{{i18n "cluster.uptime"}}</th><th>{{i18n "cluster.conns"}}</th><th>{{i18n "cluster.msg_in"}}</th><th>{{i18n "cluster.msg_out"}}</th></tr></thead>
 		<tbody id="cluster"><td colspan="8">{{i18n "loading"}}</td></tbody>
 	</table>
+
+	<h2>{{i18n "vhosts"}}</h2>
+	<div class="filter">
+		<input type="text" id="vhost-name" placeholder="{{i18n "vhosts.name_placeholder"}}">
+		<input type="text" id="vhost-desc" placeholder="{{i18n "vhosts.desc_placeholder"}}">
+		<button hx-post="/api/vhosts" hx-target="#vhosts" hx-swap="innerHTML"
+			hx-vals='js:{name: document.getElementById("vhost-name").value, description: document.getElementById("vhost-desc").value}'
+			hx-on::after-request="if(event.detail.xhr.status===201){document.getElementById('vhost-name').value='';document.getElementById('vhost-desc').value='';htmx.trigger('#vhosts-table','load')}">
+			{{i18n "vhosts.create"}}
+		</button>
+	</div>
+	<table id="vhosts-table" hx-get="/api/vhosts" hx-trigger="load" hx-target="#vhosts">
+		<thead><tr><th>{{i18n "vhosts.name"}}</th><th>{{i18n "vhosts.description"}}</th><th>{{i18n "vhosts.connections"}}</th><th>{{i18n "vhosts.queues"}}</th><th>{{i18n "vhosts.exchanges"}}</th><th></th></tr></thead>
+		<tbody id="vhosts"><td colspan="6">{{i18n "loading"}}</td></tbody>
+	</table>
 </body>
 </html>
