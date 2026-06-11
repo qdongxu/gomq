@@ -428,6 +428,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | **WebSocket realtime push (management UI)** | ✅ |
 | Web management UI — Session & CSRF protection | ✅ |
 | **Message tracing & audit logging** | ✅ |
+| **Consumer groups (load-balanced consumption, round-robin / hash)** | ✅ |
 | Mirrored Queue (HA Queue) | ✅ |
 | Federation / Shovel | ✅ |
 | **Config hot reload** | ✅ |

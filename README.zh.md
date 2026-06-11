@@ -422,6 +422,7 @@ kill -HUP $(pgrep gomqd)
 | **WebSocket 实时推送（管理端动态更新）** | ✅ |
 | Web 管理端 — 会话与 CSRF 防护 | ✅ |
 | **消息追踪与日志审计** | ✅ |
+| **消费者组（负载均衡消费，round-robin / hash）** | ✅ |
 | 镜像队列（HA Queue） | ✅ |
 | 插件系统 | ✅ |
 | Federation / Shovel | ✅ |
