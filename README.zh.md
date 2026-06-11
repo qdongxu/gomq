@@ -403,6 +403,7 @@ kill -HUP $(pgrep gomqd)
 | **Web 管理端 — Messages 页面** | ✅ |
 | Web 管理端 — Bindings 页面 | ✅ |
 | Web 管理端 — Admin 页面 | ✅ |
+| Web 管理端 — VHost 管理页面 | ✅ |
 | Web 管理端 — 集群节点页面 | ✅ |
 | Web 管理端 — 国际化（en/zh/ja） | ✅ |
 | Quorum Queue（基于 Raft 的镜像复制） | ✅ |
