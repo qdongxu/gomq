@@ -10,10 +10,25 @@ import (
 
 // ConsumerManager tracks all active consumers.
 type ConsumerManager struct {
-	byQueue map[string][]*Consumer
-	byTag   map[string]*Consumer
-	mu      sync.RWMutex
-	metrics metrics.Collector
+	byQueue   map[string][]*Consumer
+	byTag     map[string]*Consumer
+	mu        sync.RWMutex
+	metrics   metrics.Collector
+	groupMgr  *ConsumerGroupManager
+}
+
+// SetGroupManager injects the consumer group manager.
+func (m *ConsumerManager) SetGroupManager(gm *ConsumerGroupManager) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.groupMgr = gm
+}
+
+// GroupManager returns the consumer group manager.
+func (m *ConsumerManager) GroupManager() *ConsumerGroupManager {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.groupMgr
 }
 
 // NewConsumerManager creates an empty consumer manager.
@@ -32,7 +47,9 @@ func (m *ConsumerManager) SetMetrics(mc metrics.Collector) {
 	m.metrics = mc
 }
 
-// Subscribe registers a consumer for a queue.
+// Subscribe registers a consumer for a queue. If the consumer
+// specifies x-group-id in args, it joins the corresponding group
+// for load-balanced consumption.
 func (m *ConsumerManager) Subscribe(
 	tag, queueName string,
 	ch *Channel,
@@ -56,14 +73,31 @@ func (m *ConsumerManager) Subscribe(
 		}
 	}
 
-	c := NewConsumer(tag, queueName, ch, autoAck, false, exclusive, args)
+	groupID := ""
+	strategy := "round-robin"
+	if args != nil {
+		if g, ok := args["x-group-id"].(string); ok && g != "" {
+			groupID = g
+		}
+		if s, ok := args["x-group-strategy"].(string); ok && s != "" {
+			strategy = s
+		}
+	}
+
+	c := NewConsumer(tag, queueName, ch, autoAck, false, exclusive, args, groupID)
 	m.byQueue[queueName] = append(m.byQueue[queueName], c)
 	m.byTag[tag] = c
+
+	if groupID != "" && m.groupMgr != nil {
+		m.groupMgr.Join(groupID, queueName, c, strategy)
+	}
+
 	m.metrics.ConsumerAdded()
 	return c, nil
 }
 
-// Unsubscribe removes a consumer by tag.
+// Unsubscribe removes a consumer by tag. If the consumer belongs
+// to a group, it is also removed from the group.
 func (m *ConsumerManager) Unsubscribe(tag string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -81,8 +115,51 @@ func (m *ConsumerManager) Unsubscribe(tag string) error {
 			break
 		}
 	}
+
+	if c.groupID != "" && m.groupMgr != nil {
+		m.groupMgr.Leave(tag)
+	}
+
 	m.metrics.ConsumerRemoved()
 	return nil
+}
+
+// CancelByChannel unsubscribes all consumers on the given channel.
+// If x-cancel-on-ha-failover is set, those consumers are removed;
+// otherwise they are left in place.
+func (m *ConsumerManager) CancelByChannel(ch *Channel) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cancelled := 0
+	for tag, c := range m.byTag {
+		if c.channel != ch {
+			continue
+		}
+
+		// Check x-cancel-on-ha-failover flag.
+		if cancel, ok := c.args["x-cancel-on-ha-failover"].(bool); ok && !cancel {
+			continue
+		}
+
+		delete(m.byTag, tag)
+
+		list := m.byQueue[c.queueName]
+		for i, existing := range list {
+			if existing.tag == tag {
+				m.byQueue[c.queueName] = append(list[:i], list[i+1:]...)
+				break
+			}
+		}
+
+		if c.groupID != "" && m.groupMgr != nil {
+			m.groupMgr.Leave(tag)
+		}
+
+		cancelled++
+		m.metrics.ConsumerRemoved()
+	}
+	return cancelled
 }
 
 // GetConsumers returns all consumers for a queue.

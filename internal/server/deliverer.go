@@ -114,29 +114,71 @@ func (d *Deliverer) Stop() {
 	d.FlushAll()
 }
 
-// Deliver sends a message to all consumers of the target queue.
-// When batching is enabled, deliveries are buffered and flushed
-// according to BatchConfig thresholds.
+// Deliver sends a message to consumers of the target queue.
+// When a consumer belongs to a group, the group's strategy is
+// used to select exactly one member per group. Ungrouped
+// consumers receive the message as usual.
 func (d *Deliverer) Deliver(
 	msg *Message,
 	queueName string,
 	channelID uint16,
 ) error {
 	list := d.consumers.GetConsumers(queueName)
+	if len(list) == 0 {
+		return nil
+	}
+
+	// Group consumers by group ID.
+	grouped := make(map[string][]*Consumer)
+	ungrouped := make([]*Consumer, 0)
 	for _, c := range list {
-		tag := uint64(0) // delivery tag assigned by tracker
-		msg.SetDeliveryTag(tag)
-
-		ch := c.Channel()
-		if ch != nil {
-			batch := d.getOrCreateBatch(channelID, ch)
-			_, _ = batch.Add(msg, queueName, tag)
+		if gid := c.GroupID(); gid != "" {
+			grouped[gid] = append(grouped[gid], c)
 		} else {
-			_ = ch.SendFrame(nil) // placeholder frame
+			ungrouped = append(ungrouped, c)
 		}
+	}
 
-		d.tracker.Record(tag, msg, queueName, channelID)
-		d.metrics.MessageConsumed()
+	// Deliver to one member per group (using strategy).
+	gm := d.consumers.GroupManager()
+	for gid, _ := range grouped {
+		var c *Consumer
+		if gm != nil {
+			c = gm.Select(gid, msg.RoutingKey())
+		} else {
+			// fallback: first member
+			c = grouped[gid][0]
+		}
+		if c != nil {
+			d.deliverTo(msg, c, queueName, channelID)
+		}
+	}
+
+	// Deliver to all ungrouped consumers (standard AMQP broadcast).
+	for _, c := range ungrouped {
+		d.deliverTo(msg, c, queueName, channelID)
 	}
 	return nil
+}
+
+// deliverTo sends a single message to a specific consumer.
+func (d *Deliverer) deliverTo(
+	msg *Message,
+	c *Consumer,
+	queueName string,
+	channelID uint16,
+) {
+	tag := uint64(0)
+	msg.SetDeliveryTag(tag)
+
+	ch := c.Channel()
+	if ch != nil {
+		batch := d.getOrCreateBatch(channelID, ch)
+		_, _ = batch.Add(msg, queueName, tag)
+	} else {
+		_ = ch.SendFrame(nil)
+	}
+
+	d.tracker.Record(tag, msg, queueName, channelID)
+	d.metrics.MessageConsumed()
 }

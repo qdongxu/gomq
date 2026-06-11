@@ -10,6 +10,7 @@ type Consumer struct {
 	noLocal    bool
 	exclusive  bool
 	args       map[string]interface{}
+	groupID    string
 }
 
 // NewConsumer creates a consumer with the given properties.
@@ -18,6 +19,7 @@ func NewConsumer(
 	ch *Channel,
 	autoAck, noLocal, exclusive bool,
 	args map[string]interface{},
+	groupID string,
 ) *Consumer {
 	if args == nil {
 		args = map[string]interface{}{}
@@ -30,7 +32,13 @@ func NewConsumer(
 		noLocal:   noLocal,
 		exclusive: exclusive,
 		args:      args,
+		groupID:   groupID,
 	}
+}
+
+// GroupID returns the consumer group identifier.
+func (c *Consumer) GroupID() string {
+	return c.groupID
 }
 
 // Tag returns the consumer identifier.

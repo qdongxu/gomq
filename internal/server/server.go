@@ -77,9 +77,11 @@ func NewServerWithStore(metaStore store.Store) *Server {
 	store := NewMessageStore()
 	cm := NewConsumerManager()
 	tracker := NewDeliveryTracker(store)
-	prefetch := NewPrefetch()
-	prefetch.SetPrefetch(0, 0, false)
+	cprefetch := NewPrefetch()
+	cprefetch.SetPrefetch(0, 0, false)
 	flowCtrl := NewFlowController()
+	gm := NewConsumerGroupManager()
+	cm.SetGroupManager(gm)
 	deliverer := NewDeliverer(cm, store, tracker)
 	publisher := NewPublisher(ex, qm, bm, e2ebm, store, cm, tracker)
 
@@ -93,7 +95,7 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		publisher:   publisher,
 		deliverer:   deliverer,
 		tracker:     tracker,
-		prefetch:    prefetch,
+		prefetch:    cprefetch,
 		flowCtrl:    flowCtrl,
 		metaStore:   metaStore,
 		connMap:     make(map[*Connection]struct{}),
