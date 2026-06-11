@@ -387,7 +387,7 @@ kill -HUP $(pgrep gomqd)
 | 发布者确认（Confirm.Select + Basic.Ack/Nack） | ✅ |
 | 事务支持（Tx.Select / Tx.Commit / Tx.Rollback） | ✅ |
 | 死信交换机（DLX） | ✅ |
-| 消息 TTL（单消息与队列级） | ✅ |
+| 消息 TTL（单消息与队列级，后台扫描 + DLX 联动） | ✅ |
 | 优先级队列 | ✅ |
 | 消息内存存储 | ✅ |
 | 路由与投递 | ✅ |

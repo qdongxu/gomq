@@ -393,7 +393,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | Publisher Confirm (Confirm.Select + Basic.Ack/Nack) | ✅ |
 | Transaction support (Tx.Select / Tx.Commit / Tx.Rollback) | ✅ |
 | Dead letter exchange (DLX) | ✅ |
-| Message TTL (per-message & per-queue) | ✅ |
+| Message TTL (per-message & per-queue, background scan + DLX routing) | ✅ |
 | Priority queues | ✅ |
 | Message in-memory store | ✅ |
 | Routing & delivery | ✅ |
