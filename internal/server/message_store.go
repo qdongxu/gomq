@@ -63,6 +63,40 @@ func (s *MessageStore) Purge(queueName string) {
 	s.mu.Unlock()
 }
 
+// RemoveExpired scans a queue and removes messages that have
+// exceeded their TTL. Removed messages are passed to onExpired for
+// handling (e.g., dead-letter routing). The remaining alive
+// messages are kept in place. Callbacks are invoked without the
+// store lock held to avoid re-entrancy deadlocks.
+func (s *MessageStore) RemoveExpired(
+	queueName string,
+	isExpired func(*Message) bool,
+	onExpired func(*Message),
+) {
+	s.mu.Lock()
+	q := s.queues[queueName]
+	if len(q) == 0 {
+		s.mu.Unlock()
+		return
+	}
+
+	alive := make([]*Message, 0, len(q))
+	expired := make([]*Message, 0)
+	for _, msg := range q {
+		if isExpired(msg) {
+			expired = append(expired, msg)
+		} else {
+			alive = append(alive, msg)
+		}
+	}
+	s.queues[queueName] = alive
+	s.mu.Unlock()
+
+	for _, msg := range expired {
+		onExpired(msg)
+	}
+}
+
 // Bytes returns the total payload size (in bytes) for a queue.
 func (s *MessageStore) Bytes(queueName string) int64 {
 	s.mu.RLock()
