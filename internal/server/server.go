@@ -60,6 +60,7 @@ type Server struct {
 	flushSched  *FlushScheduler
 	auditLog     *AuditLog
 	messageTracer *MessageTracer
+	vhosts      *VHostManager
 }
 
 // NewServer creates a broker with all managers initialised.
@@ -111,6 +112,7 @@ func NewServerWithStore(metaStore store.Store) *Server {
 		flushSched:  NewFlushScheduler(50 * time.Millisecond),
 		auditLog:     NewAuditLog(false, 0),
 		messageTracer: NewMessageTracer(false, 0),
+		vhosts:      NewVHostManager(),
 	}
 }
 
@@ -543,6 +545,9 @@ func (s *Server) Config() *config.Config {
 	defer s.mu.RUnlock()
 	return s.cfg
 }
+
+// VHostManager returns the VHost manager.
+func (s *Server) VHostManager() *VHostManager { return s.vhosts }
 
 // AuditLog returns the server's audit log instance.
 func (s *Server) AuditLog() *AuditLog {

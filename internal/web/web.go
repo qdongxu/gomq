@@ -86,7 +86,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/channels", s.wrap(s.handleChannels))
 	s.mux.HandleFunc("/api/messages", s.wrap(s.handleMessages))
 	s.mux.HandleFunc("/api/cluster", s.wrap(s.handleCluster))
-	s.mux.HandleFunc("/api/i18n", s.wrap(s.handleI18n))
+	s.mux.HandleFunc("/api/vhosts", s.wrap(s.handleVHosts))
 	s.mux.HandleFunc("/api/lang", s.wrap(s.handleSetLang))
 }
 
