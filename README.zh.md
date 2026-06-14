@@ -388,6 +388,7 @@ kill -HUP $(pgrep gomqd)
 | 事务支持（Tx.Select / Tx.Commit / Tx.Rollback） | ✅ |
 | 死信交换机（DLX） | ✅ |
 | 消息 TTL（单消息与队列级，后台扫描 + DLX 联动） | ✅ |
+| **etcd 快照与恢复（定期备份 + 完整元数据恢复）** | ✅ |
 | 优先级队列 | ✅ |
 | 消息内存存储 | ✅ |
 | 路由与投递 | ✅ |

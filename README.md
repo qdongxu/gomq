@@ -394,6 +394,7 @@ When a non-reloadable key is changed, a warning is logged and the key is ignored
 | Transaction support (Tx.Select / Tx.Commit / Tx.Rollback) | ✅ |
 | Dead letter exchange (DLX) | ✅ |
 | Message TTL (per-message & per-queue, background scan + DLX routing) | ✅ |
+| **etcd snapshot & restore (periodic backup + full metadata recovery)** | ✅ |
 | Priority queues | ✅ |
 | Message in-memory store | ✅ |
 | Routing & delivery | ✅ |
