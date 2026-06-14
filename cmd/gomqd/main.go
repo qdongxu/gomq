@@ -41,6 +41,14 @@ func main() {
 		"version", false,
 		"print version and exit",
 	)
+	snapshotFile := flag.String(
+		"snapshot", "",
+		"create a one-time snapshot and exit",
+	)
+	restoreFile := flag.String(
+		"restore", "",
+		"restore from snapshot file before starting",
+	)
 	flag.Parse()
 
 	if *showVersion {
@@ -90,6 +98,17 @@ func main() {
 			log.Fatalf("restore from store: %v", err)
 		}
 		cancel()
+	}
+
+	// Restore from snapshot file if requested.
+	if *restoreFile != "" {
+		snap, err := server.LoadSnapshot(*restoreFile)
+		if err != nil {
+			log.Fatalf("load snapshot: %v", err)
+		}
+		if err := srv.RestoreFromSnapshot(snap); err != nil {
+			log.Fatalf("restore from snapshot: %v", err)
+		}
 	}
 
 	addr := "0.0.0.0:5672"
@@ -278,6 +297,25 @@ func main() {
 	srv.FederationManager().StartAll()
 	srv.ShovelManager().StartAll()
 
+	// Snapshot manager for periodic snapshots.
+	var snapMgr *server.SnapshotManager
+	if cfg.Snapshot.Enabled {
+		snapMgr = server.NewSnapshotManager(
+			srv, cfg.Snapshot, cfg.Cluster.NodeID)
+		snapMgr.Start()
+	}
+
+	// One-time snapshot mode (--snapshot <dir>).
+	if *snapshotFile != "" {
+		oneOff := server.NewSnapshotManager(
+			srv, config.Snapshot{OutputDir: *snapshotFile}, cfg.Cluster.NodeID)
+		if err := oneOff.Create(); err != nil {
+			log.Fatalf("snapshot: %v", err)
+		}
+		fmt.Println("snapshot created")
+		return
+	}
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
@@ -299,6 +337,9 @@ loop:
 	fmt.Println("shutting down...")
 	if reloader != nil {
 		reloader.Stop()
+	}
+	if snapMgr != nil {
+		snapMgr.Stop()
 	}
 	if stopMirrorSync != nil {
 		stopMirrorSync()

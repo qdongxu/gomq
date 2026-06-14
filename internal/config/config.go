@@ -73,6 +73,14 @@ type Limits struct {
 	BackPressureEnabled     bool    `toml:"backpressure_enabled"`       // master switch
 }
 
+// Snapshot holds periodic snapshot configuration.
+type Snapshot struct {
+	Enabled     bool   `toml:"enabled"`      // enable periodic snapshots
+	Interval    int    `toml:"interval"`       // seconds between snapshots, >0
+	RetainCount int    `toml:"retain_count"`  // max snapshots to keep, 0=unlimited
+	OutputDir   string `toml:"output_dir"`   // directory for snapshot files
+}
+
 // Auth is a placeholder for authentication settings.
 // Real implementation will be added in a later Issue.
 type Auth struct {
@@ -116,6 +124,7 @@ type Config struct {
 	Management Management `toml:"management"`
 	Memory     Memory     `toml:"memory"`
 	Limits     Limits     `toml:"limits"`
+	Snapshot   Snapshot   `toml:"snapshot"`
 }
 
 // Default returns a Config populated with safe defaults.
@@ -157,6 +166,12 @@ func Default() *Config {
 			HealthEnabled: true,
 			PprofEnabled:  false,
 			BindAddress:   "",
+		},
+		Snapshot: Snapshot{
+			Enabled:     false,
+			Interval:    3600,
+			RetainCount: 5,
+			OutputDir:   "/var/lib/gomq/snapshots",
 		},
 	}
 }
